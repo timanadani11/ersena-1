@@ -16,20 +16,23 @@
             </div>
             <div id="anuncio-container">
                 <div class="anuncio visible" data-type="bienvenida">
-                    ¡Bienvenidos al Sistema de Control de Asistencia! 👋
+
                 </div>
             </div>
-            <a href="{{ route('login') }}" class="login-btn">
-                <i class="fas fa-sign-in-alt"></i>
-                <span>Iniciar Sesihgggggón</span>
+            <a href="{{ route('login') }}">
+                <button class="btn-login">Iniciar Sesión</button>
             </a>
         </div>
 
         <div class="main-content">
             <div class="container">
                 <div class="header">
-                    <h1>Control de Asistencias en Tiempo Real</h1>
-                    <div>Última actualización: <span id="update-time"></span></div>
+                    <h1>SENA Regional Caquetá</h1>
+                    <h2>Control de entradas de aprendices</h2>
+                    <div class="update-time-container">
+                        <i class="fas fa-clock"></i>
+                        <span id="update-time"></span>
+                    </div>
                 </div>
 
                 <div class="sidebar">
@@ -65,129 +68,51 @@
         </div>
 
         <script>
+            let asistenciasInterval;
+
             // Inicializar cuando se carga el documento
-            // Script optimizado para el contenedor de anuncios
-document.addEventListener('DOMContentLoaded', function() {
-    // Mensajes de ejemplo - en producción se cargarían de la API
-    let mensajes = [
-        "¡Bienvenidos al Sistema de Control de Asistencia! 👋",
-        "Juan Pérez llegó puntual hoy! 🌟",
-        "15 aprendices han registrado asistencia esta mañana 📊",
-        "El programa de Desarrollo Web tiene la mejor asistencia 🏆"
-    ];
-    
-    let index = 0;
-    let isTransitioning = false;
-    const contenedor = document.getElementById('anuncio-container');
-    
-    // Función para actualizar mensajes (simula llamada a API)
-    async function actualizarMensajes() {
-        try {
-            //En un entorno real, descomentar esta parte:
-            const res = await fetch('/api/ticker-messages');
-            const data = await res.json();
-            if (data.status === 'success' && Array.isArray(data.messages)) {
-                if (data.messages.length > 0) {
-                    mensajes = data.messages;
-                }
-            }
-            
-            // Para pruebas, usamos los mensajes de ejemplo
-            console.log('Mensajes cargados:', mensajes.length);
-        } catch (error) {
-            console.error('Error al cargar mensajes:', error);
-        }
-    }
-
-    // Función para mostrar el siguiente mensaje con animación suave
-    function mostrarMensaje() {
-        if (isTransitioning || mensajes.length === 0) return;
-        
-        isTransitioning = true;
-        const anuncioActual = contenedor.querySelector('.anuncio.visible');
-        
-        if (anuncioActual) {
-            // Ocultar mensaje actual con animación
-            anuncioActual.classList.remove('visible');
-            setTimeout(() => anuncioActual.remove(), 400);
-        }
-
-        setTimeout(() => {
-            const mensaje = mensajes[index];
-            
-            // Determinar el tipo de mensaje para aplicar estilos diferentes
-            const tipo = mensaje.includes('¡Bienvenidos') ? 'bienvenida'
-                      : mensaje.includes('llegó') || mensaje.includes('retirado') ? 'asistencia'
-                      : mensaje.includes('aprendices') ? 'estadistica'
-                      : 'programa';
-
-            // Crear nuevo elemento con animación para emojis
-            const div = document.createElement('div');
-            div.className = 'anuncio';
-            div.setAttribute('data-type', tipo);
-            
-            // Convertir emojis a spans con clase para animarlos
-            div.innerHTML = mensaje.replace(/([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}])/gu, '<span class="emoji">$1</span>');
-            
-            // Agregar al contenedor
-            contenedor.appendChild(div);
-            
-            // Forzar reflow antes de añadir la clase visible
-            void div.offsetWidth;
-            
-            // Mostrar con animación
-            requestAnimationFrame(() => div.classList.add('visible'));
-            
-            // Avanzar al siguiente mensaje
-            index = (index + 1) % mensajes.length;
-            
-            // Permitir la siguiente transición después de completar la actual
-            setTimeout(() => isTransitioning = false, 400);
-        }, anuncioActual ? 400 : 0);
-    }
-
-    // Inicializar
-    actualizarMensajes().then(() => {
-        if (mensajes.length > 0) {
-            mostrarMensaje(); // Mostrar primer mensaje
-        }
-        
-        // Mostrar siguiente mensaje cada 8 segundos
-        setInterval(() => {
-            if (!isTransitioning && mensajes.length > 0) {
-                mostrarMensaje();
-            }
-        }, 8000);
-        
-        // Actualizar mensajes del servidor cada 5 minutos
-        setInterval(actualizarMensajes, 300000);
-    });
-    
-    // También inicializamos el contador de tiempo de actualización
-    setInterval(() => {
-        const tiempoElement = document.getElementById('update-time');
-        if (tiempoElement) {
-            tiempoElement.textContent = new Date().toLocaleTimeString();
-        }
-    }, 1000);
-});
+            document.addEventListener('DOMContentLoaded', function() {
+                // Cargar asistencias inmediatamente
+                loadAsistencias();
+                
+                // Configurar actualización automática cada 1 segundo
+                asistenciasInterval = setInterval(loadAsistencias, 1000);
+            });
 
             function loadAsistencias() {
                 fetch('/api/asistencias/diarias')
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Error en la respuesta del servidor: ' + response.status);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
+                        console.log('Datos recibidos:', data); // Debug
                         if (data.status === 'success') {
                             updateTable(data.data);
                             updateCounter(data.data);
-                            document.getElementById('update-time').textContent = new Date().toLocaleTimeString();
+                            document.getElementById('update-time').textContent = 
+                                new Date().toLocaleTimeString('es-CO', { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                    hour12: true 
+                                });
+                        } else {
+                            console.error('Error en los datos:', data);
+                            throw new Error(data.message || 'Error al cargar las asistencias');
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
+                        console.error('Error al cargar asistencias:', error);
                         document.getElementById('asistencias-body').innerHTML = `
                             <tr>
-                                <td colspan="4" style="text-align: center; padding: 20px;">
-                                    Error al cargar las asistencias. Por favor, intente nuevamente.
+                                <td colspan="4" class="text-center py-4">
+                                    <div class="error-message">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        Error al cargar las asistencias: ${error.message}
+                                    </div>
                                 </td>
                             </tr>
                         `;
@@ -196,134 +121,285 @@ document.addEventListener('DOMContentLoaded', function() {
 
             function updateTable(asistencias) {
                 const tableBody = document.getElementById('asistencias-body');
-                updateRanking(asistencias);
                 
                 if (!asistencias || asistencias.length === 0) {
                     tableBody.innerHTML = `
                         <tr>
-                            <td colspan="4" style="text-align: center; padding: 20px;">
-                                No hay asistencias registradas para el día de hoy.
+                            <td colspan="4" class="text-center py-4">
+                                <div class="empty-message">
+                                    <i class="fas fa-info-circle"></i>
+                                    No hay asistencias registradas para el día de hoy
+                                </div>
                             </td>
                         </tr>
                     `;
                     return;
                 }
 
-                const asistenciasPorUsuario = asistencias.reduce((acc, asistencia) => {
-                    const userId = asistencia.user?.id;
-                    if (!acc[userId]) {
-                        acc[userId] = {
+                // Agrupar asistencias por usuario
+                const asistenciasPorUsuario = {};
+                asistencias.forEach(asistencia => {
+                    if (!asistenciasPorUsuario[asistencia.user_id]) {
+                        asistenciasPorUsuario[asistencia.user_id] = {
                             user: asistencia.user,
                             entrada: null,
                             salida: null
                         };
                     }
                     if (asistencia.tipo === 'entrada') {
-                        acc[userId].entrada = asistencia;
+                        asistenciasPorUsuario[asistencia.user_id].entrada = asistencia;
                     } else if (asistencia.tipo === 'salida') {
-                        acc[userId].salida = asistencia;
+                        asistenciasPorUsuario[asistencia.user_id].salida = asistencia;
                     }
-                    return acc;
-                }, {});
+                });
+
+                // Convertir a array y ordenar por hora de entrada más reciente
+                const registrosOrdenados = Object.values(asistenciasPorUsuario)
+                    .sort((a, b) => {
+                        const fechaA = a.entrada ? new Date(a.entrada.fecha_hora) : new Date(0);
+                        const fechaB = b.entrada ? new Date(b.entrada.fecha_hora) : new Date(0);
+                        return fechaB - fechaA;
+                    });
 
                 tableBody.innerHTML = '';
-                Object.values(asistenciasPorUsuario).forEach(registro => {
-                    const user = registro.user || {};
-                    const programa = user.programa_formacion || {};
-                    const jornada = user.jornada || {};
-                    
-                    const horaEntrada = registro.entrada ? new Date(registro.entrada.fecha_hora).toLocaleTimeString() : '---';
-                    const horaSalida = registro.salida ? new Date(registro.salida.fecha_hora).toLocaleTimeString() : '---';
+                registrosOrdenados.forEach(registro => {
+                    const user = registro.user;
+                    if (!user) return;
 
+                    const horaEntrada = registro.entrada ? formatTime(registro.entrada.fecha_hora) : '---';
+                    const horaSalida = registro.salida ? formatTime(registro.salida.fecha_hora) : '---';
                     const row = document.createElement('tr');
+                    
                     row.innerHTML = `
-                        <td>
-                            <div class="user-info">
-                                <div class="user-name">${user.nombres_completos || 'N/A'}</div>
-                                <div class="user-doc">${user.documento_identidad || 'N/A'}</div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="program-info">
-                                <div class="program-name">${programa.nombre_programa || 'N/A'}</div>
-                                <div class="program-details">
-                                    Ficha: ${programa.numero_ficha || 'N/A'} | Ambiente: ${programa.numero_ambiente || 'N/A'}
+                            <td>
+                                <div class="user-info">
+                                    <div class="user-name">${user.nombres_completos || 'N/A'}</div>
+                                    <div class="user-details">
+                                        <div class="user-doc">Doc: ${user.documento_identidad || 'N/A'}</div>
+                                        ${user.devices && user.devices.length > 0 ? `
+                                            <div class="device-info">
+                                                <i class="fas fa-laptop"></i>
+                                                ${user.devices[0].marca} - ${user.devices[0].serial}
+                                            </div>
+                                        ` : ''}
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td>${jornada.nombre || 'N/A'}</td>
-                        <td>
-                            <div class="time-info">
-                                <div class="registro-tiempo">
-                                    <span class="badge badge-entrada">Entrada: ${horaEntrada}</span>
-                                    <span class="badge badge-salida">Salida: ${horaSalida}</span>
+                            </td>
+                            <td>
+                                <div class="program-info">
+                                    <div class="program-name">${user.programa_formacion?.nombre_programa || 'N/A'}</div>
+                                    <div class="program-details">
+                                        <div class="program-nivel">
+                                            <i class="fas fa-graduation-cap"></i>
+                                            ${user.programa_formacion?.nivel_formacion?.toUpperCase() || 'N/A'}
+                                        </div>
+                                        <div>Ficha: ${user.programa_formacion?.numero_ficha || 'N/A'}</div>
+                                        <div>Ambiente: ${user.programa_formacion?.numero_ambiente || 'N/A'}</div>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                    `;
+                            </td>
+                            <td>
+                                <div class="jornada-info">
+                                    <span class="badge badge-jornada">
+                                        <i class="fas fa-clock"></i>
+                                        ${user.jornada?.nombre?.toUpperCase() || 'N/A'}
+                                    </span>
+                                    <div class="jornada-details">
+                                        <div>Entrada: ${user.jornada?.hora_entrada || 'N/A'}</div>
+                                        <div>Tolerancia: ${user.jornada?.tolerancia || '5 min'}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="time-info">
+                                    <div class="registro-tiempo ${registro.entrada ? 'presente' : ''}">
+                                        <span class="badge badge-entrada">
+                                            <i class="fas fa-sign-in-alt"></i>
+                                            ${horaEntrada}
+                                        </span>
+                                    </div>
+                                    <div class="registro-tiempo ${registro.salida ? 'presente' : ''}">
+                                        <span class="badge badge-salida">
+                                            <i class="fas fa-sign-out-alt"></i>
+                                            ${horaSalida}
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>`;
+
+                    // Efecto de nueva entrada
+                    if (registro.entrada && isRecent(registro.entrada.fecha_hora)) {
+                        row.classList.add('new-entry');
+                        setTimeout(() => row.classList.remove('new-entry'), 5000);
+                    }
+
                     tableBody.appendChild(row);
                 });
             }
+            
+            function formatTime(dateString) {
+                return new Date(dateString).toLocaleTimeString('es-CO', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            }
+
+            function isRecent(dateString) {
+                const entryTime = new Date(dateString);
+                const now = new Date();
+                return (now - entryTime) < 60000; // 1 minuto
+            }
 
             function updateCounter(asistencias) {
-                const usuariosUnicos = new Set(asistencias.map(a => a.user?.id)).size;
-                document.getElementById('total-count').textContent = usuariosUnicos;
+                if (!asistencias) return;
+                
+                const usuariosUnicos = new Set(asistencias.map(a => a.user_id)).size;
+                const counterElement = document.getElementById('total-count');
+                
+                if (counterElement) {
+                    const currentValue = parseInt(counterElement.textContent) || 0;
+                    if (currentValue !== usuariosUnicos) {
+                        animateCounter(currentValue, usuariosUnicos, counterElement);
+                    }
+                }
             }
 
-            function updateRanking(asistencias) {
-                const rankingList = document.getElementById('ranking-list');
-                
-                const entradasPorUsuario = asistencias
-                    .filter(a => a.tipo === 'entrada')
-                    .reduce((acc, asistencia) => {
-                        const userId = asistencia.user?.id;
-                        if (!acc[userId] && asistencia.user) {
-                            const horaEntrada = new Date(asistencia.fecha_hora);
-                            const jornada = asistencia.user.jornada;
-                            const horaJornada = jornada?.hora_entrada ? new Date(`2000-01-01T${jornada.hora_entrada}`) : null;
-                            
-                            let diferencia = 0;
-                            if (horaJornada) {
-                                const entradaMinutos = horaEntrada.getHours() * 60 + horaEntrada.getMinutes();
-                                const jornadaMinutos = horaJornada.getHours() * 60 + horaJornada.getMinutes();
-                                diferencia = entradaMinutos - jornadaMinutos;
-                            }
+            function animateCounter(start, end, element) {
+                const duration = 1000;
+                const steps = 20;
+                const increment = (end - start) / steps;
+                let current = start;
+                const stepTime = duration / steps;
 
-                            acc[userId] = {
-                                user: asistencia.user,
-                                horaEntrada: horaEntrada,
-                                diferencia: diferencia
-                            };
-                        }
-                        return acc;
-                    }, {});
-
-                const ranking = Object.values(entradasPorUsuario)
-                    .sort((a, b) => a.diferencia - b.diferencia)
-                    .slice(0, 5);
-
-                rankingList.innerHTML = ranking.map((item, index) => {
-                    const positionClass = index < 3 ? 
-                        `ranking-position-${index + 1}` : 
-                        'ranking-position-other';
-                    
-                    return `
-                        <li class="ranking-item">
-                            <div class="ranking-position ${positionClass}">${index + 1}</div>
-                            <div class="ranking-info">
-                                <div class="ranking-name">${item.user.nombres_completos}</div>
-                                <div class="ranking-details">
-                                    ${item.user.jornada?.nombre || 'Sin jornada'} - 
-                                    ${item.user.programa_formacion?.nombre_programa || 'Sin programa'}
-                                </div>
-                            </div>
-                            <div class="ranking-time">
-                                ${item.horaEntrada.toLocaleTimeString()}
-                            </div>
-                        </li>
-                    `;
-                }).join('');
+                const timer = setInterval(() => {
+                    current += increment;
+                    if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+                        clearInterval(timer);
+                        element.textContent = end;
+                    } else {
+                        element.textContent = Math.round(current);
+                    }
+                }, stepTime);
             }
         </script>
+
+        <style>
+            /* Estilos adicionales para las animaciones y mejoras visuales */
+            .asistencia-row {
+                transition: background-color 0.3s ease;
+            }
+
+            .new-entry {
+                animation: highlightNew 5s ease;
+            }
+
+            @keyframes highlightNew {
+                0% { background-color: rgba(57, 169, 0, 0.2); }
+                100% { background-color: transparent; }
+            }
+
+            .error-message, .empty-message {
+                text-align: center;
+                padding: 20px;
+                color: #666;
+            }
+
+            .error-message i, .empty-message i {
+                margin-right: 8px;
+                color: #ff4444;
+            }
+
+            .empty-message i {
+                color: #999;
+            }
+
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                padding: 5px 10px;
+                border-radius: 15px;
+                font-size: 0.9em;
+                transition: opacity 0.3s ease;
+            }
+
+            .badge-entrada {
+                background-color: rgba(57, 169, 0, 0.1);
+                color: #39A900;
+            }
+
+            .badge-salida {
+                background-color: rgba(75, 85, 99, 0.1);
+                color: #4b5563;
+            }
+
+            .badge-jornada {
+                background-color: rgba(59, 130, 246, 0.1);
+                color: #3b82f6;
+            }
+
+            .jornada-info {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .jornada-details {
+                font-size: 0.85rem;
+                color: #64748b;
+            }
+
+            .program-details {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+
+            .program-details div {
+                color: #64748b;
+                font-size: 0.85rem;
+            }
+
+            .user-details {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                margin-top: 4px;
+            }
+
+            .device-info {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                color: #64748b;
+                font-size: 0.85rem;
+            }
+
+            .device-info i {
+                color: #3b82f6;
+            }
+
+            .user-doc {
+                color: #64748b;
+                font-size: 0.85rem;
+            }
+
+            .user-name {
+                font-weight: 500;
+                color: #334155;
+            }
+
+            /* Ajuste responsive */
+            @media (max-width: 768px) {
+                .device-info {
+                    font-size: 0.8rem;
+                }
+            }
+
+            .registro-tiempo:not(.presente) .badge {
+                opacity: 0.5;
+            }
+        </style>
     </body>
 </html>

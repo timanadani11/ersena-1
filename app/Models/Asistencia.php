@@ -2,14 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
 class Asistencia extends Model
 {
-    use HasFactory;
-
     protected $table = 'asistencias';
 
     protected $fillable = [
@@ -23,27 +20,13 @@ class Asistencia extends Model
         'fecha_hora' => 'datetime'
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($model) {
-            if ($model->fecha_hora) {
-                $model->fecha_hora = Carbon::parse($model->fecha_hora)->setTimezone('America/Bogota');
-            }
-        });
-    }
-
-    public function getFechaHoraAttribute($value)
-    {
-        return Carbon::parse($value)->setTimezone('America/Bogota');
-    }
-
+    // Relación con el usuario (aprendiz)
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
+    // Relación con el usuario que registró la asistencia
     public function registrador()
     {
         return $this->belongsTo(User::class, 'registrado_por');

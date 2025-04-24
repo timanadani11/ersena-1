@@ -3,116 +3,93 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asistencia;
-use Illuminate\Http\Request;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class AsistenciaController extends Controller
 {
-    /**
-     * Obtiene las asistencias del día actual
-     */
     public function getAsistenciasDiarias()
     {
         try {
+            $fecha = Carbon::today('America/Bogota');
+            
             $asistencias = Asistencia::with([
                 'user' => function($query) {
-                    $query->select('id', 'nombres_completos', 'documento_identidad', 'profile_photo', 'correo', 'jornada_id')
-                        ->with(['programaFormacion', 'jornada']);
+                    $query->select('id', 'nombres_completos', 'documento_identidad')
+                        ->with([
+                            'programaFormacion' => function($q) {
+                                $q->select('id', 'user_id', 'nombre_programa', 'numero_ficha', 'numero_ambiente', 'nivel_formacion', 'jornada_id')
+                                  ->with(['jornada:id,nombre,hora_entrada,tolerancia']);
+                            },
+                            'devices' => function($q) {
+                                $q->select('id', 'user_id', 'marca', 'serial')
+                                  ->latest()
+                                  ->take(1);
+                            }
+                        ]);
                 }
             ])
-            ->whereDate('fecha_hora', Carbon::today('America/Bogota'))
-            ->orderBy('fecha_hora', 'desc')
-            ->get();
-
-            // Log para depuración
-            Log::info('Asistencias obtenidas:', [
-                'cantidad' => $asistencias->count(),
-                'fecha' => Carbon::today('America/Bogota')->toDateString(),
-                'primera_asistencia' => $asistencias->first()
-            ]);
-
-            return response()->json([
-                'status' => 'success',
-                'data' => $asistencias,
-                'count' => $asistencias->count(),
-                'timestamp' => now()->setTimezone('America/Bogota')->format('Y-m-d H:i:s')
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error al obtener asistencias: ' . $e->getMessage());
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Error al obtener las asistencias',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Obtiene las asistencias de un usuario específico
-     */
-    public function getAsistenciasByUsuario($id)
-    {
-        try {
-            $asistencias = Asistencia::with([
-                'user' => function($query) {
-                    $query->with(['programaFormacion', 'jornada']);
-                }
-            ])
-            ->where('user_id', $id)
+            ->whereDate('fecha_hora', $fecha)
             ->orderBy('fecha_hora', 'desc')
             ->get();
 
             return response()->json([
                 'status' => 'success',
-                'data' => $asistencias
+                'data' => $asistencias->map(function ($asistencia) {
+                    $user = $asistencia->user;
+                    $programa = $user->programaFormacion;
+                    $jornada = $programa ? $programa->jornada : null;
+
+                    return [
+                        'id' => $asistencia->id,
+                        'user_id' => $asistencia->user_id,
+                        'tipo' => $asistencia->tipo,
+                        'fecha_hora' => $asistencia->fecha_hora->format('Y-m-d H:i:s'),
+                        'user' => [
+                            'id' => $user->id,
+                            'nombres_completos' => $user->nombres_completos,
+                            'documento_identidad' => $user->documento_identidad,
+                            'programa_formacion' => $programa ? [
+                                'nombre_programa' => $programa->nombre_programa,
+                                'numero_ficha' => $programa->numero_ficha,
+                                'numero_ambiente' => $programa->numero_ambiente,
+                                'nivel_formacion' => $programa->nivel_formacion
+                            ] : null,
+                            'jornada' => $jornada ? [
+                                'nombre' => $jornada->nombre,
+                                'hora_entrada' => $jornada->hora_entrada,
+                                'tolerancia' => $jornada->tolerancia
+                            ] : null,
+                            'devices' => $user->devices->map(function ($device) {
+                                return [
+                                    'marca' => $device->marca,
+                                    'serial' => $device->serial
+                                ];
+                            })
+                        ]
+                    ];
+                }),
+                'meta' => [
+                    'total' => $asistencias->count(),
+                    'fecha' => $fecha->format('Y-m-d'),
+                    'hora_actualizacion' => Carbon::now('America/Bogota')->format('Y-m-d H:i:s')
+                ]
             ]);
+
         } catch (\Exception $e) {
-            Log::error('Error al obtener asistencias por usuario: ' . $e->getMessage());
+            Log::error('Error al obtener asistencias diarias:', [
+                'mensaje' => $e->getMessage(),
+                'archivo' => $e->getFile(),
+                'linea' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'status' => 'error',
-                'message' => 'Error al obtener las asistencias del usuario',
-                'error' => $e->getMessage()
+                'message' => 'Error al obtener las asistencias: ' . $e->getMessage()
             ], 500);
         }
     }
-
-    /**
-     * Registra una nueva asistencia
-     */
-    public function registrarAsistencia(Request $request)
-    {
-        try {
-            $request->validate([
-                'user_id' => 'required|exists:users,id',
-                'tipo' => 'required|in:entrada,salida,puntual,tardanza,ausencia'
-            ]);
-
-            $asistencia = Asistencia::create([
-                'user_id' => $request->user_id,
-                'tipo' => $request->tipo,
-                'fecha_hora' => now()->setTimezone('America/Bogota'),
-                'registrado_por' => auth()->id()
-            ]);
-
-            $asistencia->load([
-                'user' => function($query) {
-                    $query->with(['programaFormacion', 'jornada']);
-                }
-            ]);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Asistencia registrada correctamente',
-                'data' => $asistencia
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error al registrar asistencia: ' . $e->getMessage());
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Error al registrar la asistencia',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-} 
+}

@@ -1,10 +1,11 @@
-            :root {
+:root {
                 --font-primary: 'Poppins', sans-serif;
                 --font-secondary: 'Outfit', sans-serif;
                 --gradient-primary: linear-gradient(135deg, #38ef7d 0%, #39A900 100%);
                 --gradient-hover: linear-gradient(135deg, #39A900 0%, #2d8600 100%);
                 --shadow-card: 0 4px 6px rgba(0, 0, 0, 0.08);
                 --shadow-input: 0 2px 4px rgba(0, 0, 0, 0.04);
+                --color-gray-50: #2e2e2e;
             }
 
             * {
@@ -24,100 +25,165 @@
             }
 
             .top-bar {
-                background: white;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                backface-visibility: hidden;
                 padding: 0.8rem 2rem;
                 display: grid;
                 grid-template-columns: auto 1fr auto;
                 align-items: center;
                 gap: 2rem;
-                box-shadow: var(--shadow-card);
                 position: fixed;
                 top: 0;
                 left: 0;
                 right: 0;
                 z-index: 1000;
-                height: 60px;
+                height: 20%px;
             }
 
             .logo img {
-                height: 40px;
+                height: 60px;
                 width: auto;
                 transform: translateZ(0);
             }
 
-            .login-btn {
-                position: relative;
-                background: #39A900;
-                color: white;
-                padding: 0.7rem 1.2rem;
-                border-radius: 12px;
-                text-decoration: none;
-                font-family: var(--font-secondary);
-                font-weight: 600;
-                font-size: 0.95rem;
+            #anuncio-container {
                 display: flex;
                 align-items: center;
-                gap: 0.6rem;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                border: 2px solid transparent;
-                box-shadow: 0 4px 6px rgba(57, 169, 0, 0.12);
+                justify-content: center;
+                height: 50px;
+                overflow: hidden;
             }
 
-            .login-btn i {
+            .anuncio {
+                font-family: var(--font-secondary);
                 font-size: 1rem;
-                transition: transform 0.3s ease;
-            }
-
-            .login-btn::before {
-                content: '';
-                position: absolute;
-                inset: -4px;
-                border-radius: 16px;
-                background: linear-gradient(45deg, #39A900, #38ef7d, #39A900);
-                opacity: 0;
-                transition: opacity 0.3s ease;
-                z-index: -1;
-            }
-
-            .login-btn::after {
-                content: '¡Únete ahora!';
-                position: absolute;
-                font-size: 0.75rem;
                 font-weight: 500;
-                color: #39A900;
-                bottom: -1.5rem;
-                left: 50%;
-                transform: translateX(-50%) translateY(10px);
+                text-align: center;
+                position: relative;
                 opacity: 0;
-                white-space: nowrap;
+                color: #2C3E50;
+                transform: translateY(-20px);
+                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .anuncio.visible {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            .anuncio[data-type="bienvenida"] {
+                color: #39A900;
+            }
+
+            .anuncio[data-type="asistencia"] {
+                color: #1976d2;
+            }
+
+            .anuncio[data-type="estadistica"] {
+                color: #f57c00;
+            }
+
+            .anuncio[data-type="programa"] {
+                color: #7b1fa2;
+            }
+
+            .anuncio .emoji {
+                display: inline-block;
+                transform: translateY(0);
+                margin: 0 4px;
                 transition: all 0.3s ease;
             }
 
-            .login-btn:hover {
+            .anuncio .emoji {
+                animation: floatEmoji 1s ease infinite;
+            }
+
+            .update-time-container {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                backface-visibility: hidden;
+                padding: 8px 15px;
+                border-radius: 20px;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            }
+
+            .update-time-container i {
+                color: #2C3E50;
+                font-size: 1.1em;
+                animation: rotate 4s linear infinite;
+            }
+
+            .update-time-container span {
+                color: #2C3E50;
+                font-family: 'Outfit', sans-serif;
+                font-weight: 500;
+                letter-spacing: 1px;
+            }
+
+            @keyframes rotate {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+
+            @keyframes floatEmoji {
+                0%, 100% {
+                    transform: translateY(0);
+                }
+                50% {
+                    transform: translateY(-4px);
+                }
+            }
+
+            .anuncio.fade-out {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            .btn-login {
+                padding: 12px 24px;
+                border: none;
+                border-radius: 12px;
+                color: white;
+                background: #39A900;
+                position: relative;
+                font-weight: 600;
+                font-size: 1rem;
+                font-family: var(--font-primary);
+                box-shadow: var(--shadow-card);
+                transition: all 0.3s ease;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                text-decoration: none;
+            }
+
+            .btn-login:hover {
                 transform: translateY(-2px);
-                background: #2d8600;
-                box-shadow: 0 8px 15px rgba(57, 169, 0, 0.2);
+                box-shadow: 0 6px 15px rgba(57, 169, 0, 0.2);
+                background: var(--gradient-hover);
             }
 
-            .login-btn:hover::before {
-                opacity: 0.3;
+            .btn-login:active {
+                transform: translateY(0);
+                box-shadow: var(--shadow-card);
             }
 
-            .login-btn:hover::after {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
+            .btn-login i {
+                font-size: 1.1rem;
+                transition: transform 0.3s ease;
             }
 
-            .login-btn:hover i {
+            .btn-login:hover i {
                 transform: translateX(3px);
             }
 
-            .login-btn:active {
-                transform: translateY(0);
-                box-shadow: 0 2px 4px rgba(57, 169, 0, 0.1);
-            }
-
             .main-content {
+
                 margin-top: 80px;
                 padding: 20px;
                 flex: 1;
@@ -159,8 +225,8 @@
             }
 
             .header {
-                background: var(--gradient-primary);
-                color: white;
+                background: white;
+                color: #2C3E50;
                 padding: 20px 24px;
                 border-radius: 16px;
                 margin-bottom: 24px;
@@ -310,14 +376,14 @@
             }
 
             .counter-label {
-                color: #718096;
+                color: #2C3E50;
                 font-size: 1rem;
                 margin-bottom: 8px;
                 font-family: var(--font-secondary);
             }
 
             .counter-value {
-                background: var(--gradient-primary);
+                background: #39A900;
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 font-size: 2.5rem;

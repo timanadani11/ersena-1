@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
 {
@@ -51,28 +52,69 @@ class AdminController extends Controller
 
         $user = User::where('documento_identidad', $request->documento_identidad)
             ->where('rol', 'aprendiz')
-            ->with(['programaFormacion', 'devices'])
+            ->with([
+                'programaFormacion',
+                'jornada',
+                'devices' => function($query) {
+                    $query->latest()->first();
+                }
+            ])
             ->first();
 
         if (!$user) {
             return response()->json(['error' => 'Aprendiz no encontrado'], 404);
         }
 
-        $asistenciaHoy = Asistencia::where('user_id', $user->id)
+        // Obtener todas las asistencias del día para el usuario
+        $asistenciasHoy = Asistencia::where('user_id', $user->id)
             ->whereDate('fecha_hora', now()->setTimezone('America/Bogota')->format('Y-m-d'))
             ->orderBy('fecha_hora', 'desc')
-            ->first();
+            ->get();
 
-        $puedeRegistrarEntrada = !$asistenciaHoy || 
-            ($asistenciaHoy && $asistenciaHoy->tipo === 'salida');
+        // Contar entradas y salidas
+        $entradasHoy = $asistenciasHoy->where('tipo', 'entrada')->count();
+        $salidasHoy = $asistenciasHoy->where('tipo', 'salida')->count();
+
+        // Si ya tiene entrada y salida, no puede registrar más
+        if ($entradasHoy >= 1 && $salidasHoy >= 1) {
+            return response()->json([
+                'user' => $user,
+                'puede_registrar_entrada' => false,
+                'puede_registrar_salida' => false,
+                'mensaje' => 'Ya completó los registros de entrada y salida para hoy',
+                'asistencias_hoy' => $asistenciasHoy,
+                'estadisticas' => [
+                    'entradas_totales' => $entradasHoy,
+                    'salidas_totales' => $salidasHoy,
+                    'hora_jornada' => $user->jornada ? $user->jornada->hora_entrada : null,
+                    'tolerancia' => $user->jornada ? $user->jornada->tolerancia : null
+                ]
+            ]);
+        }
+
+        // Solo puede registrar entrada si no tiene entradas hoy
+        $puedeRegistrarEntrada = $entradasHoy === 0;
         
-        $puedeRegistrarSalida = $asistenciaHoy && 
-            $asistenciaHoy->tipo === 'entrada';
+        // Solo puede registrar salida si tiene una entrada y no tiene salidas
+        $puedeRegistrarSalida = $entradasHoy === 1 && $salidasHoy === 0;
+
+        // Obtener la última asistencia registrada (histórico)
+        $ultimaAsistencia = Asistencia::where('user_id', $user->id)
+            ->orderBy('fecha_hora', 'desc')
+            ->first();
 
         return response()->json([
             'user' => $user,
             'puede_registrar_entrada' => $puedeRegistrarEntrada,
-            'puede_registrar_salida' => $puedeRegistrarSalida
+            'puede_registrar_salida' => $puedeRegistrarSalida,
+            'asistencias_hoy' => $asistenciasHoy,
+            'ultima_asistencia' => $ultimaAsistencia,
+            'estadisticas' => [
+                'entradas_totales' => $entradasHoy,
+                'salidas_totales' => $salidasHoy,
+                'hora_jornada' => $user->jornada ? $user->jornada->hora_entrada : null,
+                'tolerancia' => $user->jornada ? $user->jornada->tolerancia : null
+            ]
         ]);
     }
 
@@ -109,27 +151,51 @@ class AdminController extends Controller
             return response()->json(['error' => 'Aprendiz no encontrado'], 404);
         }
 
-        $existeRegistro = Asistencia::where('user_id', $user->id)
-            ->where('tipo', $request->tipo)
+        // Obtener asistencias del día
+        $asistenciasHoy = Asistencia::where('user_id', $user->id)
             ->whereDate('fecha_hora', now()->setTimezone('America/Bogota')->format('Y-m-d'))
-            ->exists();
+            ->get();
 
-        if ($existeRegistro) {
-            return response()->json([
-                'error' => 'Ya existe un registro de ' . $request->tipo . ' para este aprendiz hoy'
-            ], 400);
+        $entradasHoy = $asistenciasHoy->where('tipo', 'entrada')->count();
+        $salidasHoy = $asistenciasHoy->where('tipo', 'salida')->count();
+
+        // Validaciones específicas según el tipo de registro
+        if ($request->tipo === 'entrada') {
+            if ($entradasHoy >= 1) {
+                return response()->json([
+                    'error' => 'Ya registró su entrada para el día de hoy'
+                ], 400);
+            }
+        } else { // tipo === 'salida'
+            if ($entradasHoy === 0) {
+                return response()->json([
+                    'error' => 'Debe registrar una entrada antes de registrar una salida'
+                ], 400);
+            }
+            if ($salidasHoy >= 1) {
+                return response()->json([
+                    'error' => 'Ya registró su salida para el día de hoy'
+                ], 400);
+            }
         }
 
-        $asistencia = Asistencia::create([
-            'user_id' => $user->id,
-            'tipo' => $request->tipo,
-            'fecha_hora' => now()->setTimezone('America/Bogota'),
-            'registrado_por' => Auth::id(),
-        ]);
+        try {
+            $asistencia = Asistencia::create([
+                'user_id' => $user->id,
+                'tipo' => $request->tipo,
+                'fecha_hora' => now()->setTimezone('America/Bogota'),
+                'registrado_por' => Auth::id(),
+            ]);
 
-        return response()->json([
-            'message' => 'Asistencia registrada correctamente',
-            'asistencia' => $asistencia
-        ]);
+            return response()->json([
+                'message' => 'Asistencia registrada correctamente',
+                'asistencia' => $asistencia
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al registrar asistencia: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Error al registrar la asistencia'
+            ], 500);
+        }
     }
 }

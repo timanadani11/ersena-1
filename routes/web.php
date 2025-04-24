@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AprendizController;
+use App\Http\Controllers\AsistenciaController;
 
 // Ruta para verificar el estado de la sesión
 Route::get('/check-session', function () {
@@ -41,6 +42,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/registrar-asistencia', [AdminController::class, 'registrarAsistencia'])->name('admin.registrar-asistencia');
     Route::get('/admin/exportar-excel', [AdminController::class, 'exportarExcel'])->name('admin.exportar-excel');
     Route::get('/admin/exportar-pdf', [AdminController::class, 'exportarPDF'])->name('admin.exportar.pdf');
+    Route::get('/admin/asistencias', [AsistenciaController::class, 'index'])->name('admin.asistencias.index');
 });
 
 Route::middleware(['auth', 'role:aprendiz'])->group(function () {

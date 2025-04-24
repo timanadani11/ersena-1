@@ -267,8 +267,16 @@
                 <span id="programa-aprendiz" class="info-value"></span>
             </div>
             <div class="info-item">
+                <span class="info-label">Nivel:</span>
+                <span id="nivel-formacion" class="info-value"></span>
+            </div>
+            <div class="info-item">
                 <span class="info-label">Ficha:</span>
                 <span id="ficha-aprendiz" class="info-value"></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Jornada:</span>
+                <span id="jornada-aprendiz" class="info-value"></span>
             </div>
             
             <div class="btn-group">
@@ -555,6 +563,11 @@
             const btnId = tipo === 'entrada' ? 'btn-entrada' : 'btn-salida';
             mostrarCargando(btnId, true);
             
+            console.log('Intentando registrar asistencia:', {
+                documento_identidad: documento,
+                tipo: tipo
+            });
+            
             $.ajax({
                 url: '/admin/registrar-asistencia',
                 method: 'POST',
@@ -564,6 +577,7 @@
                     tipo: tipo
                 },
                 success: function(response) {
+                    console.log('Respuesta exitosa:', response);
                     mostrarCargando(btnId, false);
                     const mensaje = tipo === 'entrada' ? 'Entrada registrada correctamente' : 'Salida registrada correctamente';
                     mostrarNotificacion(mensaje, 'success');
@@ -580,11 +594,12 @@
                     document.getElementById(btnId).style.display = 'none';
                 },
                 error: function(error) {
+                    console.error('Error en la respuesta:', error);
                     mostrarCargando(btnId, false);
-                    mostrarNotificacion('Error al registrar asistencia', 'error');
+                    mostrarNotificacion(error.responseJSON?.error || 'Error al registrar asistencia', 'error');
                     reproducirSonido('error');
                     
-                    document.getElementById('scan-status').textContent = 'Error al registrar asistencia';
+                    document.getElementById('scan-status').textContent = 'Error al registrar asistencia: ' + (error.responseJSON?.error || 'Error desconocido');
                     document.getElementById('scan-status').classList.add('error');
                 }
             });
