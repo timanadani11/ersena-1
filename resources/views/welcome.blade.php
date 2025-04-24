@@ -21,7 +21,7 @@
             </div>
             <a href="{{ route('login') }}" class="login-btn">
                 <i class="fas fa-sign-in-alt"></i>
-                <span>Iniciar Sesión</span>
+                <span>Iniciar Sesihgggggón</span>
             </a>
         </div>
 
