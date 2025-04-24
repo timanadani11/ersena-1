@@ -1,25 +1,17 @@
-# Laravel specific files
-/vendor/
-/node_modules/
+/node_modules
+/public/hot
 /public/storage
 /storage/*.key
+/vendor
 .env
+.env.backup
 .phpunit.result.cache
-Homestead.yaml
+docker-compose.override.yml
 Homestead.json
-/.vagrant/
-
-# IDE specific files
-.idea/
-.vscode/
-
-# System files
-.DS_Store
-Thumbs.db
-
-# Logs and caches
-/storage/logs/
-/storage/framework/cache/
-/storage/framework/sessions/
-/storage/framework/views/
-/bootstrap/cache/
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/.idea
+/.vscode
+/.vagrant
+.phpunit.result.cache
