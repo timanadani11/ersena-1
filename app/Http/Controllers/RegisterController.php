@@ -16,7 +16,7 @@ class RegisterController extends Controller
 {
     public function showRegistrationForm()
     {
-        return view('auth.register'); // Crear esta vista más adelante
+        return view('auth.register');
     }
 
     public function register(Request $request)
@@ -27,6 +27,7 @@ class RegisterController extends Controller
             'correo' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'nombre_programa' => 'required|string|max:255',
+            'nivel_formacion' => 'required|in:tecnico,tecnologo',
             'numero_ficha' => 'required|string|max:255',
             'numero_ambiente' => 'required|string|max:255',
             'marca' => 'required|string|max:255',
@@ -51,7 +52,9 @@ class RegisterController extends Controller
         // Crear el registro del programa de formación
         ProgramaFormacion::create([
             'user_id' => $user->id,
+            'jornada_id' => $validated['jornada_id'],
             'nombre_programa' => $validated['nombre_programa'],
+            'nivel_formacion' => $validated['nivel_formacion'],
             'numero_ficha' => $validated['numero_ficha'],
             'numero_ambiente' => $validated['numero_ambiente'],
         ]);

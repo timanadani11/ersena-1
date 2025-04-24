@@ -1,0 +1,74 @@
+{
+    "programas": [
+        {
+            "nombre": "Gestión Empresarial",
+            "nivel": "tecnologo",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Análisis y Desarrollo de Software",
+            "nivel": "tecnologo",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Gestión Contable y Financiera",
+            "nivel": "tecnologo",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Gestión Documental",
+            "nivel": "tecnologo",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Animación 3D",
+            "nivel": "tecnologo",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Ejecución Musical con Instrumentos Musicales",
+            "nivel": "tecnico",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Asistencia en la Función Pública",
+            "nivel": "tecnico",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Asistencia Administrativa",
+            "nivel": "tecnico",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Sistemas",
+            "nivel": "tecnico",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Cocina ",
+            "nivel": "tecnico",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Enfermería ",
+            "nivel": "tecnico",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Procesamiento de Lácteos",
+            "nivel": "tecnico",
+            "fichas": ["", ""]
+        },
+        {
+            "nombre": "Mantenimiento de Motocicletas y Motocarros",
+            "nivel": "tecnico",
+            "fichas": ["",""]
+        },
+        {
+            "nombre": "Construcción de Edificaciones",
+            "nivel": "tecnico",
+            "fichas": ["", ""]
+        }
+    ]
+}
