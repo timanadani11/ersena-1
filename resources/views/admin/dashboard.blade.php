@@ -4,221 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Escaneo SENA</title>
-    <link rel="stylesheet" href="{{ asset('css/common.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+    @vite(['resources/css/app.css', 'public/css/common.css', 'public/css/admin.css'])
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&family=Poppins&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="icon" href="{{ asset('img/icon/icon.ico') }}" type="image/x-icon">
+    <link rel="icon" href="{{ asset('img/icon/icono.ico') }}" type="image/x-icon">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8"></script>
-    <style>
-        :root {
-            --primary-color: #39A900;
-            --accent-color: #38ef7d;
-            --text-color: #2C3E50;
-            --light-bg: #f0f4f8;
-            --white: #ffffff;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: var(--light-bg);
-            min-height: 100vh;
-            color: var(--text-color);
-        }
-        
-        .header {
-            background: var(--white);
-            padding: 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: var(--shadow);
-        }
-        
-        .logo img {
-            height: 40px;
-            width: auto;
-        }
-        
-        .container {
-            padding: 16px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        
-        .card {
-            background: var(--white);
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            padding: 20px;
-            margin-bottom: 16px;
-            transition: transform 0.3s ease;
-        }
-        
-        .card h2 {
-            font-size: 1.2rem;
-            margin-bottom: 16px;
-            color: var(--primary-color);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        #reader {
-            width: 100%;
-            border-radius: 12px;
-            overflow: hidden;
-            aspect-ratio: 1/1;
-            max-height: 60vh;
-        }
-        
-        .search-box {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-        
-        .form-control {
-            flex: 1;
-            padding: 12px 16px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1rem;
-            background: #f8fafc;
-            transition: border-color 0.2s;
-        }
-        
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.1);
-        }
-        
-        .btn {
-            padding: 12px 16px;
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(57, 169, 0, 0.2);
-        }
-        
-        .btn:active {
-            transform: translateY(0);
-        }
-        
-        .btn-entrada {
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            width: 100%;
-            padding: 16px;
-            font-size: 1.1rem;
-        }
-        
-        .btn-salida {
-            background: linear-gradient(135deg, #4b5563, #374151);
-            width: 100%;
-            padding: 16px;
-            font-size: 1.1rem;
-        }
-        
-        #notification {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--primary-color);
-            color: white;
-            padding: 16px 24px;
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-            display: none;
-            z-index: 1000;
-            animation: slideUp 0.3s ease-out forwards;
-        }
-        
-        @keyframes slideUp {
-            from { transform: translate(-50%, 100%); opacity: 0; }
-            to { transform: translate(-50%, 0); opacity: 1; }
-        }
-        
-        #aprendiz-info {
-            display: none;
-            animation: fadeIn 0.3s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        .info-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .info-label {
-            font-weight: bold;
-            color: #64748b;
-        }
-        
-        .info-value {
-            color: #334155;
-        }
-        
-        .btn-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        /* Loading spinner */
-        .loader {
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid white;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-            display: none;
-        }
-        
-        .btn.loading .loader {
-            display: inline-block;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
 </head>
 <body>
     <div class="header">
         <div class="logo">
-            <img src="{{ asset('img/logo/logo.png') }}" alt="Logo SENA">
+            <img src="{{ asset('img/logo/logo.webp') }}" alt="Logo SENA">
         </div>
         <div class="header-title">
             <h1>Escáner QR</h1>
@@ -311,15 +107,32 @@
         // Configuración del escáner QR
         const html5QrCode = new Html5Qrcode("reader");
         const qrConfig = {
-            fps: 10,
-            qrbox: {
-                width: 250,
-                height: 250
-            },
-            aspectRatio: 1.0,
-            showTorchButtonIfSupported: true,
-            showZoomSliderIfSupported: true
-        };
+    fps: 10,
+    qrbox: {
+        width: 250,
+        height: 250
+    },
+    aspectRatio: 1.0,
+    disableFlip: false,
+    formatsToSupport: [
+        // Formatos de código QR
+        Html5QrcodeSupportedFormats.QR_CODE,
+        
+        // Formatos de códigos de barras lineales
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.CODE_93,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODABAR
+    ],
+    rememberLastUsedCamera: true,
+    showTorchButtonIfSupported: true,
+    showZoomSliderIfSupported: true
+};
 
         function iniciarEscanerQR() {
             Html5Qrcode.getCameras().then(devices => {

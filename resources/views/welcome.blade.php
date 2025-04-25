@@ -8,11 +8,13 @@
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
+        <!-- icono -->
+        <link rel="icon" href="{{ asset('img/icon/icono.ico') }}" type="image/x-ico">
     </head>
     <body>
         <div class="top-bar">
             <div class="logo">
-                <img src="{{ asset('img/logo/logo.png') }}" alt="ERSENA Logo">
+                <img src="{{ asset('img/logo/logo.webp') }}" alt="ERSENA Logo">
             </div>
             <div id="anuncio-container">
                 <div class="anuncio visible" data-type="bienvenida">

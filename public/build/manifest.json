@@ -1,7 +1,16 @@
 {
+  "public/css/admin.css": {
+    "file": "assets/admin-x7Y1Mnbt.css",
+    "src": "public/css/admin.css",
+    "isEntry": true
+  },
+  "public/css/common.css": {
+    "file": "assets/common-9krVqmhN.css",
+    "src": "public/css/common.css",
+    "isEntry": true
+  },
   "resources/css/app.css": {
-    "file": "assets/app-l0sNRNKZ.js",
-    "name": "app",
+    "file": "assets/app-BvtlVizK.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },

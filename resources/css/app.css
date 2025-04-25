@@ -1,0 +1,17 @@
+@import '../../public/css/common.css';
+@import '../../public/css/admin.css';
+
+/* Estilos adicionales globales */
+:root {
+    --vite-error-color: #dc2626;
+    --vite-success-color: #059669;
+}
+
+/* Asegurar que los estilos se apliquen correctamente */
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    font-family: var(--font-primary);
+    background-color: var(--color-background);
+}

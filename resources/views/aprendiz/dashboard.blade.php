@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="icon" href="{{ asset('img/icon/icon.ico') }}" type="image/png">
+    <link rel="icon" href="{{ asset('img/icon/icono.ico') }}" type="image/ico">
 </head>
 <body>
     <!-- Botón de menú móvil -->
@@ -23,14 +23,17 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo-container">
-                    <img src="{{ asset('img/logo/logo.png') }}" alt="ERSENA Logo">
+                    <img src="{{ asset('img/logo/logo.webp') }}" alt="ERSENA Logo">
                     <span class="logo-text">ERSENA</span>
                 </div>
             </div>
 
             <div class="user-profile">
-                <div class="profile-image" onclick="document.getElementById('foto_perfil').click()">
-                    <img src="{{ $user->profile_photo ? asset('storage/' . $user->profile_photo) : asset('img/default/sena.png') }}" 
+                <button class="change-photo-btn" onclick="document.getElementById('foto_perfil').click()">
+                    <i class="fas fa-camera"></i>
+                </button>
+                <div class="profile-image">
+                    <img src="{{ $user->profile_photo ?? asset('img/default/sena.png') }}" 
                          alt="Foto de perfil" 
                          id="profileImage">
                     <input type="file" id="foto_perfil" name="foto_perfil" accept="image/*" style="display: none;">
@@ -74,87 +77,157 @@
             <section id="dashboard" class="content-section active">
                 <div class="section-header">
                     <h1>Bienvenido, {{ explode(' ', $user->nombres_completos)[0] }}</h1>
-                    <p>{{ now()->locale('es')->isoFormat('dddd, D [de] MMMM') }}</p>
+                    <p class="text-muted">{{ now()->locale('es')->isoFormat('dddd, D [de] MMMM') }}</p>
+                    @if($programa && $programa->jornada)
+                        <div class="schedule-info">
+                            <i class="fas fa-clock"></i>
+                            Entrada: {{ \Carbon\Carbon::parse($programa->jornada->hora_entrada)->format('h:i A') }}
+                            <span class="tolerance-badge" title="Tolerancia">
+                                <i class="fas fa-hourglass-half"></i>
+                                {{ \Carbon\Carbon::parse($programa->jornada->tolerancia)->format('i') }} min
+                            </span>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="dashboard-grid">
-                    <!-- Estado Actual -->
-                    <div class="dashboard-card">
+                    <!-- Estado Actual con Tiempo -->
+                    <div class="dashboard-card status-card {{ $estadoActual === 'dentro' ? 'success' : 'neutral' }}">
                         <div class="card-header">
-                            <div class="card-icon">
-                                <i class="fas fa-user-check"></i>
+                            <div class="card-icon pulse">
+                                <i class="fas fa-{{ $estadoActual === 'dentro' ? 'user-check' : 'user' }}"></i>
                             </div>
                             <h3>Estado Actual</h3>
                         </div>
-                        <div class="status-badge {{ $estadoActual === 'dentro' ? 'success' : 'danger' }}">
-                            <i class="fas fa-{{ $estadoActual === 'dentro' ? 'check-circle' : 'times-circle' }}"></i>
-                            {{ $estadoActual === 'dentro' ? 'En el SENA' : 'Fuera del SENA' }}
+                        <div class="status-content">
+                            <div class="status-badge {{ $estadoActual === 'dentro' ? 'success' : 'neutral' }}">
+                                <i class="fas fa-{{ $estadoActual === 'dentro' ? 'check-circle' : 'clock' }}"></i>
+                                {{ $estadoActual === 'dentro' ? 'En el SENA' : 'Fuera del SENA' }}
+                            </div>
+                            @if($ultimoRegistro)
+                                <div class="time-info">
+                                    <span class="time-label">Desde:</span>
+                                    <span class="time-value">{{ $ultimoRegistro->fecha_hora->format('h:i A') }}</span>
+                                </div>
+                            @endif
                         </div>
                     </div>
 
-                    <!-- Último Registro -->
+                    <!-- Estadísticas de Asistencia -->
                     <div class="dashboard-card">
                         <div class="card-header">
                             <div class="card-icon">
-                                <i class="fas fa-clock"></i>
+                                <i class="fas fa-chart-line"></i>
                             </div>
-                            <h3>Último Registro</h3>
+                            <h3>Estadísticas</h3>
                         </div>
-                        @if($ultimoRegistro)
-                            <div class="status-badge {{ $ultimoRegistro->tipo === 'entrada' ? 'success' : 'danger' }}">
-                                <i class="fas fa-sign-{{ $ultimoRegistro->tipo === 'entrada' ? 'in' : 'out' }}-alt"></i>
-                                {{ $ultimoRegistro->tipo === 'entrada' ? 'Entrada' : 'Salida' }} - 
-                                {{ $ultimoRegistro->fecha_hora->format('h:i A') }}
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ $registrosRecientes->where('tipo', 'entrada')->count() }}</div>
+                                <div class="stat-label">Asistencias</div>
                             </div>
-                        @else
-                            <div class="empty-state">
-                                <p>Sin registros</p>
+                            <div class="stat-item">
+                                <div class="stat-value">
+                                    @php
+                                        $puntualidad = $registrosRecientes->where('tipo', 'entrada')->count() > 0 
+                                            ? round(($registrosRecientes->where('tipo', 'entrada')->filter(function($registro) use ($programa) {
+                                                if (!$programa || !$programa->jornada) return false;
+                                                $horaEntrada = \Carbon\Carbon::parse($programa->jornada->hora_entrada);
+                                                $tolerancia = \Carbon\Carbon::parse($programa->jornada->tolerancia);
+                                                $limiteEntrada = $horaEntrada->copy()->addMinutes($tolerancia->minute);
+                                                return $registro->fecha_hora->format('H:i') <= $limiteEntrada->format('H:i');
+                                            })->count() / $registrosRecientes->where('tipo', 'entrada')->count()) * 100)
+                                            : 0;
+                                    @endphp
+                                    {{ $puntualidad }}%
+                                </div>
+                                <div class="stat-label">Puntualidad</div>
                             </div>
-                        @endif
+                            <div class="stat-item">
+                                <div class="stat-value">{{ $registrosRecientes->count() }}</div>
+                                <div class="stat-label">Total Registros</div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Información del Programa -->
-                    <div class="dashboard-card">
+                    <!-- Información del Programa Mejorada -->
+                    <div class="dashboard-card program-card">
                         <div class="card-header">
                             <div class="card-icon">
                                 <i class="fas fa-graduation-cap"></i>
                             </div>
-                            <h3>Programa</h3>
+                            <h3>Mi Programa</h3>
                         </div>
                         @if($programa)
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <div class="info-label">Programa</div>
-                                    <div class="info-value">{{ $programa->nombre_programa }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Ficha</div>
-                                    <div class="info-value">{{ $programa->numero_ficha }}</div>
+                            <div class="program-info">
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <div class="info-label"><i class="fas fa-book"></i> Programa</div>
+                                        <div class="info-value">{{ $programa->nombre_programa }}</div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label"><i class="fas fa-hashtag"></i> Ficha</div>
+                                        <div class="info-value">{{ $programa->numero_ficha }}</div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label"><i class="fas fa-door-open"></i> Ambiente</div>
+                                        <div class="info-value">{{ $programa->numero_ambiente }}</div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label"><i class="fas fa-layer-group"></i> Nivel</div>
+                                        <div class="info-value text-capitalize">{{ $programa->nivel_formacion }}</div>
+                                    </div>
                                 </div>
                             </div>
                         @else
                             <div class="empty-state">
                                 <i class="fas fa-folder-open"></i>
-                                <p>Sin información</p>
+                                <p>Sin información del programa</p>
                             </div>
                         @endif
                     </div>
                 </div>
 
-                <!-- Registros Recientes -->
+                <!-- Registros Recientes con Mejoras -->
                 <div class="records-container">
                     <div class="records-header">
-                        <h2>Registros Recientes</h2>
+                        <h2><i class="fas fa-history"></i> Registros Recientes</h2>
+                        <div class="records-summary">
+                            <span class="summary-item">
+                                <i class="fas fa-calendar-check"></i>
+                                Últimos 30 días
+                            </span>
+                        </div>
                     </div>
                     <div class="records-list">
                         @forelse($registrosRecientes as $registro)
-                            <div class="record-item">
+                            <div class="record-item {{ $registro->tipo }}">
                                 <div class="record-icon">
                                     <i class="fas fa-sign-{{ $registro->tipo === 'entrada' ? 'in' : 'out' }}-alt"></i>
                                 </div>
                                 <div class="record-info">
-                                    <div class="record-title">{{ $registro->tipo === 'entrada' ? 'Entrada' : 'Salida' }}</div>
-                                    <div class="record-subtitle">{{ $registro->fecha_hora->format('d/m/Y h:i A') }}</div>
+                                    <div class="record-title">
+                                        {{ $registro->tipo === 'entrada' ? 'Entrada' : 'Salida' }}
+                                        @php
+                                            $esPuntual = false;
+                                            if($registro->tipo === 'entrada' && $programa && $programa->jornada) {
+                                                $horaEntrada = \Carbon\Carbon::parse($programa->jornada->hora_entrada);
+                                                $tolerancia = \Carbon\Carbon::parse($programa->jornada->tolerancia);
+                                                $limiteEntrada = $horaEntrada->copy()->addMinutes($tolerancia->minute);
+                                                $esPuntual = $registro->fecha_hora->format('H:i') <= $limiteEntrada->format('H:i');
+                                            }
+                                        @endphp
+                                        @if($registro->tipo === 'entrada')
+                                            <span class="punctuality-badge {{ $esPuntual ? 'on-time' : 'late' }}" 
+                                                  title="{{ $esPuntual ? 'Llegada puntual' : 'Llegada tarde' }}">
+                                                <i class="fas fa-{{ $esPuntual ? 'check' : 'exclamation' }}"></i>
+                                            </span>
+                                        @endif
+                                    </div>
+                                    <div class="record-subtitle">
+                                        <span class="date">{{ $registro->fecha_hora->format('d/m/Y') }}</span>
+                                        <span class="time">{{ $registro->fecha_hora->format('h:i A') }}</span>
+                                    </div>
                                 </div>
                                 <div class="status-badge {{ $registro->tipo === 'entrada' ? 'success' : 'danger' }}">
                                     {{ $registro->tipo === 'entrada' ? 'Entrada' : 'Salida' }}
@@ -212,23 +285,35 @@
 
                 <div class="dashboard-grid">
                     @forelse($devices as $device)
-                        <div class="dashboard-card">
+                        <div class="dashboard-card device-card">
                             <div class="card-header">
                                 <div class="card-icon">
                                     <i class="fas fa-laptop"></i>
                                 </div>
                                 <h3>{{ $device->marca }}</h3>
                             </div>
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <div class="info-label">Serial</div>
-                                    <div class="info-value">{{ $device->serial }}</div>
+                            <div class="device-info">
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <div class="info-label">
+                                            <i class="fas fa-barcode"></i>
+                                            Serial
+                                        </div>
+                                        <div class="info-value">{{ $device->serial }}</div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="device-image">
-                                <img src="{{ asset('storage/' . $device->foto_serial) }}" 
-                                     alt="Foto Serial" 
-                                     loading="lazy">
+                                <div class="device-image-container">
+                                    <div class="device-image">
+                                        <img src="{{ $device->foto_serial }}" 
+                                             alt="Foto Serial {{ $device->marca }}"
+                                             loading="lazy"
+                                             onclick="mostrarImagenAmpliada(this.src)">
+                                    </div>
+                                    <div class="image-hint">
+                                        <i class="fas fa-search-plus"></i>
+                                        Click para ampliar
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     @empty
@@ -239,6 +324,12 @@
                             </div>
                         </div>
                     @endforelse
+                </div>
+
+                <!-- Modal para imagen ampliada -->
+                <div id="modalImagen" class="modal" onclick="this.style.display='none'">
+                    <span class="modal-close">&times;</span>
+                    <img class="modal-content" id="imagenAmpliada">
                 </div>
             </section>
 
@@ -251,9 +342,7 @@
                 <div class="dashboard-card">
                     <div class="qr-container">
                         <div class="qr-image">
-                            <img src="{{ asset('storage/qr_codes/' . $user->qr_code) }}" 
-                                 alt="Mi código QR"
-                                 loading="lazy">
+                            <canvas id="qrCanvas"></canvas>
                         </div>
                         <button onclick="descargarQR()" class="btn btn-primary">
                             <i class="fas fa-download"></i>
@@ -265,8 +354,38 @@
         </main>
     </div>
 
+    <!-- Agregar QR.js -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Generar QR
+        const qrCode = '{{ $user->qr_code }}';
+        const canvas = document.getElementById('qrCanvas');
+        
+        QRCode.toCanvas(canvas, qrCode, {
+            width: 300,
+            height: 300,
+            margin: 2,
+            color: {
+                dark: '#000000',
+                light: '#ffffff'
+            }
+        }, function (error) {
+            if (error) console.error(error);
+        });
+
+        // Función para descargar QR
+        window.descargarQR = function() {
+            const canvas = document.getElementById('qrCanvas');
+            const link = document.createElement('a');
+            link.download = 'mi_codigo_qr.png';
+            link.href = canvas.toDataURL('image/png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
         // Manejo del menú móvil
         const menuToggle = document.getElementById('menuToggle');
         const sidebar = document.getElementById('sidebar');
@@ -330,45 +449,87 @@
         const hashInicial = window.location.hash.substring(1);
         if (hashInicial) cambiarSeccion(hashInicial);
 
-        // Actualización de foto de perfil
+        // Manejo de la foto de perfil
         const inputFotoPerfil = document.getElementById('foto_perfil');
         if (inputFotoPerfil) {
             inputFotoPerfil.addEventListener('change', async function(e) {
                 const file = e.target.files[0];
                 if (!file) return;
 
-                const formData = new FormData();
-                formData.append('foto_perfil', file);
-                formData.append('_token', '{{ csrf_token() }}');
+                // Comprimir y convertir imagen
+                const compressedImage = await compressImage(file);
+                const base64Image = await convertToBase64(compressedImage);
 
+                // Actualizar preview
+                document.getElementById('profileImage').src = base64Image;
+
+                // Enviar al servidor
                 try {
                     const response = await fetch('{{ route("aprendiz.actualizar-foto") }}', {
                         method: 'POST',
-                        body: formData,
+                        body: JSON.stringify({ foto_perfil: base64Image }),
                         headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
                             'Accept': 'application/json'
                         }
                     });
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.message || 'Error al procesar la solicitud');
-                    }
-
-                    const data = await response.json();
-                    if (data.success) {
-                        document.querySelectorAll('img[alt="Foto de perfil"]')
-                            .forEach(img => {
-                                img.src = data.url + '?t=' + new Date().getTime();
-                            });
-                        alert(data.message);
-                    } else {
-                        throw new Error(data.message || 'Error al actualizar la foto');
-                    }
+                    if (!response.ok) throw new Error('Error al actualizar la foto');
+                    
                 } catch (error) {
                     console.error('Error:', error);
-                    alert(error.message || 'Error al procesar la solicitud');
+                    alert('Error al actualizar la foto');
                 }
+            });
+        }
+
+        // Función para comprimir imagen
+        async function compressImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        // Redimensionar si es muy grande
+                        const MAX_SIZE = 800;
+                        if (width > height) {
+                            if (width > MAX_SIZE) {
+                                height *= MAX_SIZE / width;
+                                width = MAX_SIZE;
+                            }
+                        } else {
+                            if (height > MAX_SIZE) {
+                                width *= MAX_SIZE / height;
+                                height = MAX_SIZE;
+                            }
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Convertir a JPEG con calidad reducida
+                        canvas.toBlob(resolve, 'image/jpeg', 0.7);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Función para convertir Blob a Base64
+        function convertToBase64(blob) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
             });
         }
     });
@@ -418,15 +579,11 @@
         }
     }
 
-    // Descarga de QR
-    function descargarQR() {
-        const qrImage = document.querySelector('.qr-image img');
-        const link = document.createElement('a');
-        link.href = qrImage.src;
-        link.download = 'mi_codigo_qr.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    function mostrarImagenAmpliada(src) {
+        var modal = document.getElementById("modalImagen");
+        var img = document.getElementById("imagenAmpliada");
+        img.src = src;
+        modal.style.display = "block";
     }
     </script>
 </body>

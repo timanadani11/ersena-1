@@ -9,14 +9,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ asset('css/common.css') }}">
     <link href="{{ asset('css/register.css') }}" rel="stylesheet">
-    <link rel="icon" href="{{ asset('img/icon/icon.ico') }}" type="image/x-icon">
+    <link rel="icon" href="{{ asset('img/icon/icono.ico') }}" type="image/x-icon">
 </head>
 <body class="register-page">
     <div class="register-container">
         <div class="register-card">
             <div class="register-header-content">
             <div class="register-logo">
-                <img src="{{ asset('img/logo/logo.png') }}" alt="Logo SENA" loading="lazy">
+                <img src="{{ asset('img/logo/logo.webp') }}" alt="Logo SENA" loading="lazy">
             </div>
                 <h2 class="register-title">Registro de Aprendiz</h2>
                 
@@ -198,6 +198,7 @@
                                 </label>
                                 <input type="file" id="foto_serial" name="foto_serial" 
                                     accept="image/*" required capture="environment">
+                                <input type="hidden" id="foto_serial_base64" name="foto_serial_base64">
                                 <div class="file-preview" id="file-preview"></div>
                             </div>
                         </div>
@@ -243,20 +244,6 @@
             const submitBtn = document.getElementById('submitBtn');
             const progressBar = document.getElementById('progress-bar');
             const passwordFields = document.querySelectorAll('.toggle-password');
-            const fileInput = document.getElementById('foto_serial');
-            const filePreview = document.getElementById('file-preview');
-
-            // Mostrar vista previa de la imagen
-            fileInput.addEventListener('change', function() {
-                if (this.files && this.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        filePreview.innerHTML = `<img src="${e.target.result}" alt="Vista previa">`;
-                        filePreview.style.display = 'block';
-                    }
-                    reader.readAsDataURL(this.files[0]);
-                }
-            });
 
             // Toggle para mostrar/ocultar contraseñas
             passwordFields.forEach(icon => {
@@ -422,16 +409,42 @@
                 }
             }
 
-            // Validar y enviar formulario
+            // Manejo simple de la foto del serial
+            const inputFotoSerial = document.getElementById('foto_serial');
+            const fotoSerialBase64 = document.getElementById('foto_serial_base64');
+            
+            inputFotoSerial.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        fotoSerialBase64.value = e.target.result;
+                        document.getElementById('file-preview').innerHTML = `
+                            <img src="${e.target.result}" alt="Vista previa">
+                        `;
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Simplificar la validación y envío
             function validateAndSubmit() {
-                if (validateSection(totalSteps)) {
-                    submitBtn.classList.add('submitting');
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-                    setTimeout(() => form.submit(), 800);
+                if (validateSection(currentStep)) {
+                    form.submit();
                 }
             }
 
-            // Event listeners
+            submitBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                validateAndSubmit();
+            });
+            
+            form.addEventListener('submit', function(e) {
+                if (!validateSection(currentStep)) {
+                    e.preventDefault();
+                }
+            });
+
             nextBtn.addEventListener('click', nextStep);
             prevBtn.addEventListener('click', () => {
                 currentStep--;

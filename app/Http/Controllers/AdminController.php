@@ -120,20 +120,65 @@ class AdminController extends Controller
 
     public function buscarPorQR(Request $request)
     {
-        $request->validate([
-            'qr_code' => 'required|string',
-        ]);
+        try {
+            $request->validate([
+                'qr_code' => 'required|string',
+            ]);
 
-        $user = User::where('qr_code', $request->qr_code)
-            ->where('rol', 'aprendiz')
-            ->with(['programaFormacion', 'devices'])
-            ->first();
+            $codigo = trim($request->qr_code);
+            Log::info('Código recibido en buscarPorQR: ' . $codigo);
 
-        if (!$user) {
-            return response()->json(['error' => 'Aprendiz no encontrado'], 404);
+            // Primero intenta buscar por QR code (para QRs generados por el sistema)
+            $user = User::where('qr_code', $codigo)
+                ->where('rol', 'aprendiz')
+                ->with(['programaFormacion', 'devices', 'jornada'])
+                ->first();
+
+            Log::info('Búsqueda por QR: ' . ($user ? 'Usuario encontrado' : 'Usuario no encontrado'));
+
+            // Si no encuentra por QR, intenta buscar por documento de identidad
+            if (!$user) {
+                // Limpiamos el código para asegurarnos que solo contiene números
+                $documento = preg_replace('/[^0-9]/', '', $codigo);
+                Log::info('Intentando con documento limpio: ' . $documento);
+                
+                if (!empty($documento)) {
+                    $user = User::where('documento_identidad', $documento)
+                        ->where('rol', 'aprendiz')
+                        ->with(['programaFormacion', 'devices', 'jornada'])
+                        ->first();
+                    
+                    Log::info('Búsqueda por documento: ' . ($user ? 'Usuario encontrado' : 'Usuario no encontrado'));
+                } else {
+                    Log::warning('El código no contiene números: ' . $codigo);
+                    return response()->json([
+                        'error' => 'El código no contiene un documento válido',
+                        'codigo_recibido' => $codigo
+                    ], 404);
+                }
+            }
+
+            if (!$user) {
+                Log::warning('No se encontró usuario para el código/documento: ' . $codigo);
+                return response()->json([
+                    'error' => 'Aprendiz no encontrado',
+                    'codigo_recibido' => $codigo,
+                    'documento_limpio' => $documento ?? null
+                ], 404);
+            }
+
+            Log::info('Usuario encontrado exitosamente: ' . $user->nombres_completos);
+            return $this->verificarAsistencia(new Request(['documento_identidad' => $user->documento_identidad]));
+
+        } catch (\Exception $e) {
+            Log::error('Error en buscarPorQR: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'error' => 'Error al procesar el código',
+                'mensaje' => $e->getMessage(),
+                'codigo_recibido' => $request->qr_code ?? null
+            ], 500);
         }
-
-        return $this->verificarAsistencia(new Request(['documento_identidad' => $user->documento_identidad]));
     }
 
     public function registrarAsistencia(Request $request)
