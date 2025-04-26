@@ -142,24 +142,6 @@ class TickerMessageService
     }
 
     /**
-     * Genera mensajes personalizados para nuevos aprendices
-     */
-    private function generarMensajesNuevosAprendices(array $aprendices): array
-    {
-        $mensajes = [];
-        foreach ($aprendices as $aprendiz) {
-            $mensajes[] = sprintf(
-                "👋 ¡Bienvenido al SENA %s! Te has unido al programa %s (Ficha %s) en la jornada %s",
-                $aprendiz->nombres_completos,
-                $aprendiz->nombre_programa,
-                $aprendiz->numero_ficha,
-                $aprendiz->jornada
-            );
-        }
-        return $mensajes;
-    }
-
-    /**
      * Genera mensajes personalizados para asistencias
      */
     private function generarMensajesAsistencias(array $asistencias): array
@@ -194,7 +176,7 @@ class TickerMessageService
     {
         $mensajes = [
             "👋 ¡Bienvenidos al SENA!",
-            "💻 Sistema de Control de Asistencia"
+            "💻 Sistema de Control de entradas"
         ];
         
         // Intentar obtener cada tipo de mensaje independientemente
@@ -202,7 +184,7 @@ class TickerMessageService
             $portatilesPorJornada = $this->getPortatilesPorJornada();
             foreach ($portatilesPorJornada as $dato) {
                 $mensajes[] = sprintf(
-                    "📱 La jornada %s cuenta con %d portátiles registrados", 
+                    "📱 En la jornada de la %s hay %d aprendices con portatil personal", 
                     $dato->jornada, 
                     $dato->total_portatiles
                 );
@@ -216,10 +198,8 @@ class TickerMessageService
             foreach ($primerosEnLlegar as $primero) {
                 $hora = Carbon::parse($primero->fecha_hora)->format('h:i A');
                 $mensajes[] = sprintf(
-                    "🥇 %s del programa %s llegó primero en la jornada %s a las %s", 
+                    "🥇 %s fue el primero en llegar a su formación a las %s", 
                     $primero->nombres_completos,
-                    $primero->nombre_programa,
-                    $primero->jornada,
                     $hora
                 );
             }
@@ -244,22 +224,14 @@ class TickerMessageService
             $programas = $this->getDatosProgramas();
             foreach ($programas as $programa) {
                 $mensajes[] = sprintf(
-                    "📚 Programa %s - Ficha %s - Ambiente %s", 
+                    "📚 Justo ahora en el Ambiente %s estan los de  %s - Ficha %s", 
+                    $programa->numero_ambiente,
                     $programa->nombre_programa,
-                    $programa->numero_ficha,
-                    $programa->numero_ambiente
+                    $programa->numero_ficha
                 );
             }
         } catch (\Exception $e) {
             Log::error('Error obteniendo datos de programas:', ['error' => $e->getMessage()]);
-        }
-
-        try {
-            $nuevosAprendices = $this->getNuevosAprendices();
-            $mensajesNuevos = $this->generarMensajesNuevosAprendices($nuevosAprendices);
-            $mensajes = array_merge($mensajes, $mensajesNuevos);
-        } catch (\Exception $e) {
-            Log::error('Error obteniendo nuevos aprendices:', ['error' => $e->getMessage()]);
         }
 
         try {

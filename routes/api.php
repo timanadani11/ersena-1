@@ -8,3 +8,4 @@ Route::get('/asistencias/diarias', [AsistenciaController::class, 'getAsistencias
 
 Route::get('/programas', [ProgramaFormacionController::class, 'index']);
 Route::get('/programas/search', [ProgramaFormacionController::class, 'search']);
+Route::get('/ticker-messages', [App\Http\Controllers\TickerMessageController::class, 'getMessages']);

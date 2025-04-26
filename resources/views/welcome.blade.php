@@ -10,6 +10,53 @@
         <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
         <!-- icono -->
         <link rel="icon" href="{{ asset('img/icon/icono.ico') }}" type="image/x-ico">
+        <!-- GSAP for smooth animations -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+        <style>
+            /* #anuncio-container {
+                position: relative;
+                flex: 1;
+                height: 60px;
+                overflow: hidden;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+                margin: 0 20px;
+            }
+
+            .ticker-wrapper {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+            }
+
+            .ticker-message {
+                position: absolute;
+                left: 0;
+                white-space: nowrap;
+                padding: 0 20px;
+                opacity: 0;
+                transform: translateX(100%);
+                color: #fff;
+                font-size: 1.1em;
+                font-weight: 500;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            } */
+
+            .ticker-message.active {
+                opacity: 1;
+            }
+
+            .ticker-progress {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                height: 2px;
+                background: linear-gradient(90deg, #4CAF50, #8BC34A);
+                width: 0%;
+            }
+        </style>
     </head>
     <body>
         <div class="top-bar">
@@ -17,9 +64,10 @@
                 <img src="{{ asset('img/logo/logo.webp') }}" alt="ERSENA Logo">
             </div>
             <div id="anuncio-container">
-                <div class="anuncio visible" data-type="bienvenida">
-
+                <div class="ticker-wrapper">
+                    <!-- Messages will be inserted here dynamically -->
                 </div>
+                <div class="ticker-progress"></div>
             </div>
             <a href="{{ route('login') }}">
                 <button class="btn-login">Iniciar Sesión</button>
@@ -284,124 +332,124 @@
                     }
                 }, stepTime);
             }
-        </script>
 
-        <style>
-            /* Estilos adicionales para las animaciones y mejoras visuales */
-            .asistencia-row {
-                transition: background-color 0.3s ease;
-            }
+            class MessageTicker {
+                constructor() {
+                    this.wrapper = document.querySelector('.ticker-wrapper');
+                    this.progressBar = document.querySelector('.ticker-progress');
+                    this.currentMessages = [];
+                    this.nextMessages = [];
+                    this.currentIndex = 0;
+                    this.messageInterval = 5000; // 5 seconds per message
+                    this.isAnimating = false;
+                    this.lastFetchTime = 0;
+                    this.fetchInterval = 30000; // Fetch new messages every 30 seconds
+                    
+                    this.init();
+                }
 
-            .new-entry {
-                animation: highlightNew 5s ease;
-            }
+                async init() {
+                    await this.fetchMessages();
+                    this.startTicker();
+                    this.setupPolling();
+                }
 
-            @keyframes highlightNew {
-                0% { background-color: rgba(57, 169, 0, 0.2); }
-                100% { background-color: transparent; }
-            }
+                async fetchMessages() {
+                    try {
+                        const response = await fetch('/api/ticker-messages');
+                        const data = await response.json();
+                        const messages = data.messages || [];
+                        
+                        // If this is our first fetch, set both current and next
+                        if (this.currentMessages.length === 0) {
+                            this.currentMessages = messages.slice(0, 10);
+                            this.nextMessages = messages.slice(10, 20);
+                        } else {
+                            // Otherwise, update the next batch
+                            this.nextMessages = messages.slice(0, 10);
+                        }
+                        
+                        this.lastFetchTime = Date.now();
+                    } catch (error) {
+                        console.error('Error fetching ticker messages:', error);
+                        // Use fallback messages if fetch fails
+                        this.currentMessages = ["⚠️ Actualizando información..."];
+                    }
+                }
 
-            .error-message, .empty-message {
-                text-align: center;
-                padding: 20px;
-                color: #666;
-            }
+                setupPolling() {
+                    setInterval(async () => {
+                        if (Date.now() - this.lastFetchTime >= this.fetchInterval) {
+                            await this.fetchMessages();
+                        }
+                    }, 1000);
+                }
 
-            .error-message i, .empty-message i {
-                margin-right: 8px;
-                color: #ff4444;
-            }
+                startTicker() {
+                    if (this.currentMessages.length === 0) return;
+                    
+                    this.showNextMessage();
+                }
 
-            .empty-message i {
-                color: #999;
-            }
+                showNextMessage() {
+                    if (this.isAnimating) return;
+                    this.isAnimating = true;
 
-            .badge {
-                display: inline-flex;
-                align-items: center;
-                gap: 5px;
-                padding: 5px 10px;
-                border-radius: 15px;
-                font-size: 0.9em;
-                transition: opacity 0.3s ease;
-            }
+                    // Create and prepare the message element
+                    const messageEl = document.createElement('div');
+                    messageEl.className = 'ticker-message';
+                    messageEl.textContent = this.currentMessages[this.currentIndex];
+                    this.wrapper.appendChild(messageEl);
 
-            .badge-entrada {
-                background-color: rgba(57, 169, 0, 0.1);
-                color: #39A900;
-            }
+                    // Reset progress bar
+                    gsap.set(this.progressBar, { width: 0 });
 
-            .badge-salida {
-                background-color: rgba(75, 85, 99, 0.1);
-                color: #4b5563;
-            }
+                    // Animate message in
+                    const timeline = gsap.timeline({
+                        onComplete: () => {
+                            this.isAnimating = false;
+                            this.advanceToNext();
+                        }
+                    });
 
-            .badge-jornada {
-                background-color: rgba(59, 130, 246, 0.1);
-                color: #3b82f6;
-            }
+                    timeline
+                        .fromTo(messageEl, 
+                            { x: '100%', opacity: 0 },
+                            { x: '0%', opacity: 1, duration: 0.5, ease: 'power2.out' }
+                        )
+                        .to(this.progressBar, 
+                            { width: '100%', duration: this.messageInterval / 1000, ease: 'none' },
+                            '-=0.5'
+                        )
+                        .to(messageEl, 
+                            { x: '-100%', opacity: 0, duration: 0.5, ease: 'power2.in' },
+                            `+=${this.messageInterval / 1000 - 1}`
+                        )
+                        .add(() => {
+                            messageEl.remove();
+                        });
+                }
 
-            .jornada-info {
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
-            }
-
-            .jornada-details {
-                font-size: 0.85rem;
-                color: #64748b;
-            }
-
-            .program-details {
-                display: flex;
-                flex-direction: column;
-                gap: 2px;
-            }
-
-            .program-details div {
-                color: #64748b;
-                font-size: 0.85rem;
-            }
-
-            .user-details {
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-                margin-top: 4px;
-            }
-
-            .device-info {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                color: #64748b;
-                font-size: 0.85rem;
-            }
-
-            .device-info i {
-                color: #3b82f6;
-            }
-
-            .user-doc {
-                color: #64748b;
-                font-size: 0.85rem;
-            }
-
-            .user-name {
-                font-weight: 500;
-                color: #334155;
-            }
-
-            /* Ajuste responsive */
-            @media (max-width: 768px) {
-                .device-info {
-                    font-size: 0.8rem;
+                advanceToNext() {
+                    this.currentIndex++;
+                    
+                    // If we've shown all current messages, switch to next batch
+                    if (this.currentIndex >= this.currentMessages.length) {
+                        this.currentIndex = 0;
+                        if (this.nextMessages.length > 0) {
+                            this.currentMessages = [...this.nextMessages];
+                            this.nextMessages = [];
+                        }
+                    }
+                    
+                    this.showNextMessage();
                 }
             }
 
-            .registro-tiempo:not(.presente) .badge {
-                opacity: 0.5;
-            }
-        </style>
+            // Initialize the ticker when the document is ready
+            document.addEventListener('DOMContentLoaded', () => {
+                new MessageTicker();
+            });
+        </script>
     </body>
 </html>
