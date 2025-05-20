@@ -4,7 +4,6 @@ use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\ServiceProvider;
 
 return [
-
     /*
     |--------------------------------------------------------------------------
     | Application Name
@@ -56,7 +55,7 @@ return [
     */
 
     'url' => env('APP_URL', 'https://ersena.test'),
-'asset_url' => env('ASSET_URL', 'https://ersena.test'),
+    'asset_url' => env('ASSET_URL', 'https://ersena.test'),
 
     /*
     |--------------------------------------------------------------------------
