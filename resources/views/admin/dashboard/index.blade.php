@@ -5,90 +5,96 @@
 @section('page-title', 'Dashboard Administrativo')
 
 @section('content')
-<!-- Stats Cards -->
-<div class="stats-cards fadeIn">
-    <div class="stat-card">
-        <div class="stat-card-header">
-            <div>
-                <div class="stat-card-title">Total Aprendices</div>
-                <div class="stat-card-value">{{ $estadisticas['total_aprendices'] }}</div>
+<div class="dashboard-content fadeIn">
+    <!-- Stats Cards -->
+    <div class="stats-cards">
+        <div class="stat-card delay-100">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-card-title">Total Aprendices</div>
+                    <div class="stat-card-value">{{ $estadisticas['total_aprendices'] }}</div>
+                </div>
+                <div class="stat-card-icon">
+                    <i class="fas fa-users"></i>
+                </div>
             </div>
-            <div class="stat-card-icon">
-                <i class="fas fa-users"></i>
+        </div>
+        
+        <div class="stat-card delay-200">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-card-title">Asistencias Hoy</div>
+                    <div class="stat-card-value">{{ $estadisticas['asistencias_hoy'] }}</div>
+                </div>
+                <div class="stat-card-icon">
+                    <i class="fas fa-user-check"></i>
+                </div>
+            </div>
+            <div class="stat-card-trend">
+                <i class="fas fa-circle" style="font-size: 8px; margin-right: 4px;"></i>
+                <span>{{ $estadisticas['porcentaje_asistencia_hoy'] }}% de asistencia</span>
+            </div>
+        </div>
+        
+        <div class="stat-card delay-300">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-card-title">Tardanzas (Este mes)</div>
+                    <div class="stat-card-value">{{ $estadisticas['porcentaje_tardanzas'] }}%</div>
+                </div>
+                <div class="stat-card-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stat-card delay-400">
+            <div class="stat-card-header">
+                <div>
+                    <div class="stat-card-title">Tendencia Semanal</div>
+                    <div class="stat-card-value">{{ $estadisticas['tendencia_semanal'] > 0 ? '+' : '' }}{{ $estadisticas['tendencia_semanal'] }}%</div>
+                </div>
+                <div class="stat-card-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+            </div>
+            <div class="stat-card-trend {{ $estadisticas['tendencia_semanal'] >= 0 ? 'trend-up' : 'trend-down' }}">
+                <i class="fas fa-{{ $estadisticas['tendencia_semanal'] >= 0 ? 'arrow-up' : 'arrow-down' }}" style="margin-right: 4px;"></i>
+                <span>vs. semana anterior</span>
             </div>
         </div>
     </div>
-    
-    <div class="stat-card">
-        <div class="stat-card-header">
-            <div>
-                <div class="stat-card-title">Asistencias Hoy</div>
-                <div class="stat-card-value">{{ $estadisticas['asistencias_hoy'] }}</div>
-            </div>
-            <div class="stat-card-icon">
-                <i class="fas fa-user-check"></i>
-            </div>
-        </div>
-        <div class="stat-card-trend">
-            <i class="fas fa-circle" style="font-size: 8px; margin-right: 4px;"></i>
-            <span>{{ $estadisticas['porcentaje_asistencia_hoy'] }}% de asistencia</span>
-        </div>
-    </div>
-    
-    <div class="stat-card">
-        <div class="stat-card-header">
-            <div>
-                <div class="stat-card-title">Tardanzas (Este mes)</div>
-                <div class="stat-card-value">{{ $estadisticas['porcentaje_tardanzas'] }}%</div>
-            </div>
-            <div class="stat-card-icon">
-                <i class="fas fa-clock"></i>
-            </div>
-        </div>
-    </div>
-    
-    <div class="stat-card">
-        <div class="stat-card-header">
-            <div>
-                <div class="stat-card-title">Tendencia Semanal</div>
-                <div class="stat-card-value">{{ $estadisticas['tendencia_semanal'] > 0 ? '+' : '' }}{{ $estadisticas['tendencia_semanal'] }}%</div>
-            </div>
-            <div class="stat-card-icon">
-                <i class="fas fa-chart-line"></i>
-            </div>
-        </div>
-        <div class="stat-card-trend {{ $estadisticas['tendencia_semanal'] >= 0 ? 'trend-up' : 'trend-down' }}">
-            <i class="fas fa-{{ $estadisticas['tendencia_semanal'] >= 0 ? 'arrow-up' : 'arrow-down' }}" style="margin-right: 4px;"></i>
-            <span>vs. semana anterior</span>
-        </div>
-    </div>
-</div>
 
-<!-- Charts Section -->
-<div class="charts-container">
-    <div class="chart-card fadeIn">
-        <div class="chart-header">
-            <div class="chart-title">Asistencias Diarias (Últimos 7 días)</div>
+    <!-- Charts Section -->
+    <div class="charts-container">
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">Asistencias Diarias (Últimos 7 días)</div>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="asistenciasChart"></canvas>
+            </div>
         </div>
-        <canvas id="asistenciasChart" height="300"></canvas>
+        
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">Distribución por Programa</div>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="programasChart"></canvas>
+            </div>
+        </div>
     </div>
     
-    <div class="chart-card fadeIn">
+    <!-- Puntualidad Chart -->
+    <div class="chart-card">
         <div class="chart-header">
-            <div class="chart-title">Distribución por Programa</div>
+            <div class="chart-title">Puntualidad (Este mes)</div>
         </div>
-        <canvas id="programasChart" height="300"></canvas>
-    </div>
-</div>
-
-<!-- Puntualidad Chart -->
-<div class="chart-card fadeIn" style="margin-bottom: 1.5rem;">
-    <div class="chart-header">
-        <div class="chart-title">Puntualidad (Este mes)</div>
-    </div>
-    <div style="display: flex; align-items: center; justify-content: center;">
-        <div style="width: 50%; max-width: 300px;">
-            <canvas id="puntualidadChart" height="300"></canvas>
+        <div class="chart-wrapper" style="display: flex; align-items: center; justify-content: center;">
+            <div style="width: 50%; max-width: 300px;">
+                <canvas id="puntualidadChart"></canvas>
+            </div>
         </div>
     </div>
 </div>
@@ -101,8 +107,8 @@
         cargarEstadisticasGraficos();
     });
 
+    // Cargar estadísticas para gráficos
     function cargarEstadisticasGraficos() {
-        // Hacer la petición AJAX para obtener los datos
         $.ajax({
             url: '{{ route("admin.estadisticas.graficos") }}',
             method: 'GET',
@@ -148,6 +154,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: true,
                 plugins: {
                     legend: {
                         display: false
@@ -221,13 +228,16 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
                 plugins: {
                     legend: {
                         position: 'right',
                         labels: {
                             boxWidth: 15,
-                            padding: 15
+                            padding: 15,
+                            font: {
+                                size: 11
+                            }
                         }
                     },
                     tooltip: {
@@ -267,10 +277,15 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
                 plugins: {
                     legend: {
-                        position: 'bottom'
+                        position: 'bottom',
+                        labels: {
+                            font: {
+                                size: 11
+                            }
+                        }
                     },
                     tooltip: {
                         callbacks: {
@@ -289,4 +304,4 @@
         });
     }
 </script>
-@endsection
+@endsection 

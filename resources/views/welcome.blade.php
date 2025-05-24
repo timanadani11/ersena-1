@@ -13,37 +13,6 @@
         <!-- GSAP for smooth animations -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
         <style>
-            /* #anuncio-container {
-                position: relative;
-                flex: 1;
-                height: 60px;
-                overflow: hidden;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 8px;
-                margin: 0 20px;
-            }
-
-            .ticker-wrapper {
-                position: absolute;
-                width: 100%;
-                height: 100%;
-                display: flex;
-                align-items: center;
-            }
-
-            .ticker-message {
-                position: absolute;
-                left: 0;
-                white-space: nowrap;
-                padding: 0 20px;
-                opacity: 0;
-                transform: translateX(100%);
-                color: #fff;
-                font-size: 1.1em;
-                font-weight: 500;
-                text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            } */
-
             .ticker-message.active {
                 opacity: 1;
             }
@@ -77,25 +46,19 @@
         <div class="main-content">
             <div class="container">
                 <div class="header">
-                    <h1>SENA Regional Caquetá</h1>
-                    <h2>Control de entradas de aprendices</h2>
+                    <div class="header-content-left">
+                        <h1>SENA Regional Caquetá</h1>
+                        <div class="subtitle-container">
+                            <h2>Control de entradas de aprendices</h2>
+                            <div class="counter-box">
+                                <span class="counter-label">Total Asistencias:</span>
+                                <span class="counter-value" id="total-count">0</span>
+                            </div>
+                        </div>
+                    </div>
                     <div class="update-time-container">
                         <i class="fas fa-clock"></i>
                         <span id="update-time"></span>
-                    </div>
-                </div>
-
-                <div class="sidebar">
-                    <div class="counter-box">
-                        <div class="counter-label">Total Asistencias</div>
-                        <div class="counter-value" id="total-count">0</div>
-                    </div>
-
-                    <div class="ranking-box">
-                        <div class="ranking-title">Top 5 - Puntualidad</div>
-                        <ul class="ranking-list" id="ranking-list">
-                            <!-- El ranking se cargará dinámicamente -->
-                        </ul>
                     </div>
                 </div>
 

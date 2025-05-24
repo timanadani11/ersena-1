@@ -29,13 +29,12 @@
             </div>
 
             <div class="user-profile">
-                <button class="change-photo-btn" onclick="document.getElementById('foto_perfil').click()">
-                    <i class="fas fa-camera"></i>
-                </button>
-                <div class="profile-image">
-                    <img src="{{ $user->profile_photo ?? asset('img/default/sena.png') }}" 
-                         alt="Foto de perfil" 
-                         id="profileImage">
+                <div class="profile-image-container">
+                    <div class="profile-image" onclick="document.getElementById('foto_perfil').click()">
+                        <img src="{{ $user->profile_photo ? asset($user->profile_photo) : asset('img/default/default.png') }}" 
+                             alt="Foto de perfil" 
+                             id="profileImage">
+                    </div>
                     <input type="file" id="foto_perfil" name="foto_perfil" accept="image/*" style="display: none;">
                 </div>
                 <div class="user-info">
@@ -456,80 +455,45 @@
                 const file = e.target.files[0];
                 if (!file) return;
 
-                // Comprimir y convertir imagen
-                const compressedImage = await compressImage(file);
-                const base64Image = await convertToBase64(compressedImage);
+                // Actualizar preview instantáneamente
+                const previewUrl = URL.createObjectURL(file);
+                document.getElementById('profileImage').src = previewUrl;
 
-                // Actualizar preview
-                document.getElementById('profileImage').src = base64Image;
+                // Enviar al servidor como FormData
+                const formData = new FormData();
+                formData.append('foto_perfil', file);
 
-                // Enviar al servidor
                 try {
                     const response = await fetch('{{ route("aprendiz.actualizar-foto") }}', {
                         method: 'POST',
-                        body: JSON.stringify({ foto_perfil: base64Image }),
+                        body: formData,
                         headers: {
-                            'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
                             'Accept': 'application/json'
                         }
                     });
 
-                    if (!response.ok) throw new Error('Error al actualizar la foto');
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.message || 'Error al actualizar la foto');
+                    }
                     
+                    if (result.new_photo_url) {
+                        document.getElementById('profileImage').src = result.new_photo_url;
+                    } else {
+                        throw new Error('No se recibió la URL de la nueva foto');
+                    }
+
                 } catch (error) {
                     console.error('Error:', error);
-                    alert('Error al actualizar la foto');
+                    alert(error.message || 'Error al actualizar la foto. Intenta de nuevo.');
+                    // Revertir la imagen de vista previa si falla la carga
+                    document.getElementById('profileImage').src = '{{ $user->profile_photo ? asset($user->profile_photo) : asset('img/default/default.png') }}';
+                } finally {
+                    // Revocar el Object URL para liberar memoria
+                    URL.revokeObjectURL(previewUrl);
                 }
-            });
-        }
-
-        // Función para comprimir imagen
-        async function compressImage(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
-                        
-                        // Redimensionar si es muy grande
-                        const MAX_SIZE = 800;
-                        if (width > height) {
-                            if (width > MAX_SIZE) {
-                                height *= MAX_SIZE / width;
-                                width = MAX_SIZE;
-                            }
-                        } else {
-                            if (height > MAX_SIZE) {
-                                width *= MAX_SIZE / height;
-                                height = MAX_SIZE;
-                            }
-                        }
-                        
-                        canvas.width = width;
-                        canvas.height = height;
-                        
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        
-                        // Convertir a JPEG con calidad reducida
-                        canvas.toBlob(resolve, 'image/jpeg', 0.7);
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        // Función para convertir Blob a Base64
-        function convertToBase64(blob) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(blob);
             });
         }
     });

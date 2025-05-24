@@ -34,15 +34,40 @@ Route::middleware(['auth'])->group(function () {
     })->name('home');
 });
 
-// Rutas protegidas por roles
-Route::middleware(['auth', 'role:admin'])->group(function () {
-    Route::get('/admin', [AdminController::class, 'dashboard'])->name('admin.dashboard');
-    Route::post('/admin/verificar-asistencia', [AdminController::class, 'verificarAsistencia']);
-    Route::post('/admin/buscar-por-qr', [AdminController::class, 'buscarPorQR']);
-    Route::post('/admin/registrar-asistencia', [AdminController::class, 'registrarAsistencia'])->name('admin.registrar-asistencia');
-    Route::get('/admin/exportar-excel', [AdminController::class, 'exportarExcel'])->name('admin.exportar-excel');
-    Route::get('/admin/exportar-pdf', [AdminController::class, 'exportarPDF'])->name('admin.exportar.pdf');
-    Route::get('/admin/asistencias', [AsistenciaController::class, 'index'])->name('admin.asistencias.index');
+// Rutas de administrador
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    // Dashboard
+    Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    
+    // Escáner QR
+    Route::get('/scanner', [AdminController::class, 'scanner'])->name('admin.scanner');
+    
+    // Aprendices
+    Route::get('/aprendices', [AdminController::class, 'aprendices'])->name('admin.aprendices');
+    
+    // Programas
+    Route::get('/programas', [AdminController::class, 'programas'])->name('admin.programas');
+    
+    // Asistencias
+    Route::get('/asistencias', [AdminController::class, 'asistencias'])->name('admin.asistencias.index');
+    
+    // Reportes
+    Route::get('/reportes', [AdminController::class, 'reportes'])->name('admin.reportes');
+    
+    // Configuración
+    Route::get('/configuracion', [AdminController::class, 'configuracion'])->name('admin.configuracion');
+
+    // API de estadísticas para gráficos AJAX
+    Route::get('/api/estadisticas/graficos', [AdminController::class, 'obtenerEstadisticasGraficos'])->name('admin.estadisticas.graficos');
+    
+    // Verificar asistencia por documento
+    Route::post('/verificar-asistencia', [AdminController::class, 'verificarAsistencia'])->name('admin.verificar-asistencia');
+    
+    // Buscar por código QR
+    Route::post('/buscar-por-qr', [AdminController::class, 'buscarPorQR'])->name('admin.buscar-por-qr');
+    
+    // Registrar asistencia
+    Route::post('/registrar-asistencia', [AdminController::class, 'registrarAsistencia'])->name('admin.registrar-asistencia');
 });
 
 Route::middleware(['auth', 'role:aprendiz'])->group(function () {

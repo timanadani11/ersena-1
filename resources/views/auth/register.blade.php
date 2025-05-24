@@ -198,7 +198,6 @@
                                 </label>
                                 <input type="file" id="foto_serial" name="foto_serial" 
                                     accept="image/*" required capture="environment">
-                                <input type="hidden" id="foto_serial_base64" name="foto_serial_base64">
                                 <div class="file-preview" id="file-preview"></div>
                             </div>
                         </div>
@@ -411,14 +410,12 @@
 
             // Manejo simple de la foto del serial
             const inputFotoSerial = document.getElementById('foto_serial');
-            const fotoSerialBase64 = document.getElementById('foto_serial_base64');
             
             inputFotoSerial.addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        fotoSerialBase64.value = e.target.result;
                         document.getElementById('file-preview').innerHTML = `
                             <img src="${e.target.result}" alt="Vista previa">
                         `;

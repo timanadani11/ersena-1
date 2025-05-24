@@ -4,44 +4,260 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Asistencia;
+use App\Models\ProgramaFormacion;
+use App\Models\Jornada;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class AdminController extends Controller
 {
+    /**
+     * Muestra la página principal del dashboard administrativo
+     */
     public function dashboard()
     {
-        $page = request()->get('page', 1);
-        $perPage = 20;
+        // Estadísticas generales
+        $estadisticas = $this->obtenerEstadisticasGenerales();
+        
+        return view('admin.dashboard.index', [
+            'estadisticas' => $estadisticas
+        ]);
+    }
 
-        $asistencias = Asistencia::with(['user.programaFormacion', 'user.devices'])
-            ->whereDate('fecha_hora', '>=', now()->setTimezone('America/Bogota')->subDays(30))
-            ->orderBy('fecha_hora', 'desc')
+    /**
+     * Muestra la página del escáner QR
+     */
+    public function scanner() 
+    {
+        return view('admin.scanner.index');
+    }
+
+    /**
+     * Muestra la página de gestión de aprendices
+     */
+    public function aprendices()
+    {
+        $aprendices = User::where('rol', 'aprendiz')
+            ->with(['programaFormacion', 'jornada'])
+            ->latest()
+            ->paginate(15);
+        
+        return view('admin.aprendices.index', [
+            'aprendices' => $aprendices
+        ]);
+    }
+
+    /**
+     * Muestra la página de gestión de programas de formación
+     */
+    public function programas()
+    {
+        $programas = ProgramaFormacion::with('user')
+            ->latest()
+            ->paginate(15);
+        
+        return view('admin.programas.index', [
+            'programas' => $programas
+        ]);
+    }
+
+    /**
+     * Muestra la página de reportes de asistencia
+     */
+    public function reportes()
+    {
+        return view('admin.reportes.index');
+    }
+
+    /**
+     * Muestra la página de configuración
+     */
+    public function configuracion()
+    {
+        return view('admin.config.index');
+    }
+
+    /**
+     * Muestra todas las asistencias
+     */
+    public function asistencias()
+    {
+        $asistencias = Asistencia::with(['user.programaFormacion', 'user.jornada'])
+            ->latest()
+            ->paginate(20);
+        
+        return view('admin.asistencias.index', [
+            'asistencias' => $asistencias
+        ]);
+    }
+
+    /**
+     * Obtiene estadísticas generales del sistema para el dashboard
+     */
+    private function obtenerEstadisticasGenerales()
+    {
+        // Fecha actual (Bogotá)
+        $hoy = Carbon::now()->setTimezone('America/Bogota')->format('Y-m-d');
+        $inicioSemana = Carbon::now()->setTimezone('America/Bogota')->startOfWeek()->format('Y-m-d');
+        $inicioMes = Carbon::now()->setTimezone('America/Bogota')->startOfMonth()->format('Y-m-d');
+
+        // Total de usuarios aprendices
+        $totalAprendices = User::where('rol', 'aprendiz')->count();
+
+        // Asistencias de hoy
+        $asistenciasHoy = DB::table('asistencias')
+            ->whereDate('fecha_hora', $hoy)
+            ->where('tipo', 'entrada')
+            ->count();
+        
+        $porcentajeAsistenciaHoy = $totalAprendices > 0 ? round(($asistenciasHoy / $totalAprendices) * 100) : 0;
+
+        // Asistencias de la semana
+        $asistenciasSemana = DB::table('asistencias')
+            ->whereDate('fecha_hora', '>=', $inicioSemana)
+            ->where('tipo', 'entrada')
+            ->select(DB::raw('DATE(fecha_hora) as fecha'), DB::raw('count(*) as total'))
+            ->groupBy('fecha')
             ->get();
 
-        $grupos = $asistencias->groupBy(function($asistencia) {
-            return $asistencia->user_id . '_' . $asistencia->fecha_hora->setTimezone('America/Bogota')->format('Y-m-d');
-        })->map(function($grupo) {
-            return $grupo->map(function($asistencia) {
-                return $asistencia->toArray();
-            });
-        });
+        // Asistencias del mes por programa
+        $asistenciasPorPrograma = DB::table('asistencias')
+            ->join('users', 'asistencias.user_id', '=', 'users.id')
+            ->join('programa_formacion', 'programa_formacion.user_id', '=', 'users.id')
+            ->whereDate('asistencias.fecha_hora', '>=', $inicioMes)
+            ->where('asistencias.tipo', 'entrada')
+            ->select(
+                'programa_formacion.nombre_programa',
+                DB::raw('count(asistencias.id) as total_asistencias')
+            )
+            ->groupBy('programa_formacion.nombre_programa')
+            ->get();
 
-        $items = new Collection($grupos);
-        $items = $items->values();
+        // Promedio de llegadas tarde (comparando con la hora de entrada de la jornada)
+        $llegadasTarde = DB::table('asistencias')
+            ->join('users', 'asistencias.user_id', '=', 'users.id')
+            ->join('jornadas', 'users.jornada_id', '=', 'jornadas.id')
+            ->whereDate('asistencias.fecha_hora', '>=', $inicioMes)
+            ->where('asistencias.tipo', 'entrada')
+            ->whereRaw("TIME(fecha_hora) > TIME(ADDTIME(jornadas.hora_entrada, SEC_TO_TIME(jornadas.tolerancia * 60)))")
+            ->count();
 
-        $paginatedItems = new LengthAwarePaginator(
-            $items->forPage($page, $perPage),
-            $items->count(),
-            $perPage,
-            $page,
-            ['path' => request()->url()]
-        );
+        $totalAsistenciasMes = Asistencia::whereDate('fecha_hora', '>=', $inicioMes)
+            ->where('tipo', 'entrada')
+            ->count();
+        
+        $porcentajeTardanzas = $totalAsistenciasMes > 0 ? round(($llegadasTarde / $totalAsistenciasMes) * 100) : 0;
 
-        return view('admin.dashboard', ['asistencias' => $paginatedItems]);
+        // Tendencia semanal (comparar con semana anterior)
+        $inicioSemanaAnterior = Carbon::now()->setTimezone('America/Bogota')->subWeek()->startOfWeek()->format('Y-m-d');
+        $finSemanaAnterior = Carbon::now()->setTimezone('America/Bogota')->subWeek()->endOfWeek()->format('Y-m-d');
+        
+        $asistenciasSemanaAnterior = Asistencia::whereBetween(DB::raw('DATE(fecha_hora)'), [$inicioSemanaAnterior, $finSemanaAnterior])
+            ->where('tipo', 'entrada')
+            ->count();
+        
+        $asistenciasSemanaActual = Asistencia::whereBetween(DB::raw('DATE(fecha_hora)'), [$inicioSemana, $hoy])
+            ->where('tipo', 'entrada')
+            ->count();
+        
+        $tendenciaSemanal = $asistenciasSemanaAnterior > 0 
+            ? round((($asistenciasSemanaActual - $asistenciasSemanaAnterior) / $asistenciasSemanaAnterior) * 100) 
+            : 100;
+
+        return [
+            'total_aprendices' => $totalAprendices,
+            'asistencias_hoy' => $asistenciasHoy,
+            'porcentaje_asistencia_hoy' => $porcentajeAsistenciaHoy,
+            'asistencias_semana' => $asistenciasSemana,
+            'asistencias_por_programa' => $asistenciasPorPrograma,
+            'porcentaje_tardanzas' => $porcentajeTardanzas,
+            'tendencia_semanal' => $tendenciaSemanal
+        ];
+    }
+
+    /**
+     * Retorna estadísticas para los gráficos del dashboard mediante AJAX
+     */
+    public function obtenerEstadisticasGraficos()
+    {
+        // Últimos 7 días
+        $ultimosDias = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $fecha = Carbon::now()->setTimezone('America/Bogota')->subDays($i)->format('Y-m-d');
+            $ultimosDias[] = $fecha;
+        }
+        
+        // Asistencias por día (últimos 7 días)
+        $asistenciasPorDia = [];
+        foreach ($ultimosDias as $fecha) {
+            $asistenciasPorDia[] = [
+                'fecha' => $fecha,
+                'total' => Asistencia::whereDate('fecha_hora', $fecha)
+                    ->where('tipo', 'entrada')
+                    ->count()
+            ];
+        }
+        
+        // Asistencias por programa (último mes)
+        $inicioMes = Carbon::now()->setTimezone('America/Bogota')->startOfMonth()->format('Y-m-d');
+        $asistenciasPorPrograma = DB::table('asistencias')
+            ->join('users', 'asistencias.user_id', '=', 'users.id')
+            ->leftJoin('programa_formacion', 'programa_formacion.user_id', '=', 'users.id')
+            ->whereDate('asistencias.fecha_hora', '>=', $inicioMes)
+            ->where('asistencias.tipo', 'entrada')
+            ->select(
+                'programa_formacion.nombre_programa',
+                DB::raw('count(asistencias.id) as total')
+            )
+            ->groupBy('programa_formacion.nombre_programa')
+            ->get();
+        
+        // Puntualidad (% en hora vs tarde)
+        $puntualidad = $this->calcularEstadisticasPuntualidad();
+        
+        return response()->json([
+            'asistencias_por_dia' => $asistenciasPorDia,
+            'asistencias_por_programa' => $asistenciasPorPrograma,
+            'puntualidad' => $puntualidad
+        ]);
+    }
+    
+    /**
+     * Calcula estadísticas de puntualidad (último mes)
+     */
+    private function calcularEstadisticasPuntualidad()
+    {
+        $inicioMes = Carbon::now()->setTimezone('America/Bogota')->startOfMonth()->format('Y-m-d');
+        
+        // Total de asistencias del mes
+        $totalAsistencias = Asistencia::whereDate('fecha_hora', '>=', $inicioMes)
+            ->where('tipo', 'entrada')
+            ->count();
+        
+        // Llegadas a tiempo
+        $llegadasATiempo = DB::table('asistencias')
+            ->join('users', 'asistencias.user_id', '=', 'users.id')
+            ->join('jornadas', 'users.jornada_id', '=', 'jornadas.id')
+            ->whereDate('asistencias.fecha_hora', '>=', $inicioMes)
+            ->where('asistencias.tipo', 'entrada')
+            ->whereRaw("TIME(fecha_hora) <= TIME(ADDTIME(jornadas.hora_entrada, SEC_TO_TIME(jornadas.tolerancia * 60)))")
+            ->count();
+        
+        // Llegadas tarde
+        $llegadasTarde = $totalAsistencias - $llegadasATiempo;
+        
+        return [
+            'a_tiempo' => $llegadasATiempo,
+            'tarde' => $llegadasTarde,
+            'porcentaje_puntualidad' => $totalAsistencias > 0 
+                ? round(($llegadasATiempo / $totalAsistencias) * 100) 
+                : 0
+        ];
     }
 
     public function verificarAsistencia(Request $request)

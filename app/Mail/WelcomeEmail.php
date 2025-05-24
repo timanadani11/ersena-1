@@ -14,12 +14,10 @@ class WelcomeEmail extends Mailable
     use Queueable, SerializesModels;
 
     public $user;
-    public $qrCode;
 
-    public function __construct($user, $qrCode)
+    public function __construct($user)
     {
         $this->user = $user;
-        $this->qrCode = $qrCode;
     }
 
     public function envelope(): Envelope

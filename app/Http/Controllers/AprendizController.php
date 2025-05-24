@@ -68,8 +68,14 @@ class AprendizController extends Controller
     public function actualizarFoto(Request $request)
     {
         try {
+            // Validación mejorada
             $request->validate([
-                'foto_perfil' => 'required|string'
+                'foto_perfil' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048'
+            ], [
+                'foto_perfil.required' => 'Debes seleccionar una imagen',
+                'foto_perfil.image' => 'El archivo debe ser una imagen',
+                'foto_perfil.mimes' => 'Solo se permiten archivos JPG, PNG, GIF o WEBP',
+                'foto_perfil.max' => 'La imagen no puede superar los 2MB'
             ]);
 
             $user = Auth::user();
@@ -80,17 +86,36 @@ class AprendizController extends Controller
                 ], 401);
             }
 
-            // Update and save the user model
-            User::where('id', $user->id)->update([
-                'profile_photo' => $request->foto_perfil
-            ]);
+            // Eliminar foto anterior si existe y no es la imagen por defecto
+            if ($user->profile_photo && 
+                $user->profile_photo !== 'img/default/default.png' && 
+                Storage::disk('public')->exists(str_replace('storage/', '', $user->profile_photo))) {
+                Storage::disk('public')->delete(str_replace('storage/', '', $user->profile_photo));
+            }
+
+            // Guardar la nueva imagen
+            $file = $request->file('foto_perfil');
+            $fileName = 'profile_' . $user->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('profile_photos', $fileName, 'public');
+
+            // Actualizar el usuario
+            $user->profile_photo = 'storage/' . $path;
+            $user->save();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Foto actualizada correctamente'
+                'message' => 'Foto actualizada correctamente',
+                'new_photo_url' => asset($user->profile_photo)
             ]);
 
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
+            Log::error('Error al actualizar foto de perfil: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al procesar la solicitud'
@@ -119,5 +144,3 @@ class AprendizController extends Controller
         ]);
     }
 }
-
-
