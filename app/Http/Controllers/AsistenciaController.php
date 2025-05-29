@@ -24,9 +24,7 @@ class AsistenciaController extends Controller
                                   ->with(['jornada:id,nombre,hora_entrada,tolerancia']);
                             },
                             'devices' => function($q) {
-                                $q->select('id', 'user_id', 'marca', 'serial')
-                                  ->latest()
-                                  ->take(1);
+                                $q->select('id', 'user_id', 'marca', 'serial');
                             }
                         ]);
                 }
@@ -62,12 +60,12 @@ class AsistenciaController extends Controller
                                 'hora_entrada' => $jornada->hora_entrada,
                                 'tolerancia' => $jornada->tolerancia
                             ] : null,
-                            'devices' => $user->devices->map(function ($device) {
+                            'devices' => $user->devices ? $user->devices->map(function ($device) {
                                 return [
                                     'marca' => $device->marca,
                                     'serial' => $device->serial
                                 ];
-                            })
+                            })->toArray() : []
                         ]
                     ];
                 }),

@@ -9,28 +9,16 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
         <!-- icono -->
-        <link rel="icon" href="{{ asset('img/icon/icono.ico') }}" type="image/x-ico">
+        <link rel="icon" href="{{ asset('img/icon/logoSena.png') }}" type="image/png">
         <!-- GSAP for smooth animations -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-        <style>
-            .ticker-message.active {
-                opacity: 1;
-            }
-
-            .ticker-progress {
-                position: absolute;
-                bottom: 0;
-                left: 0;
-                height: 2px;
-                background: linear-gradient(90deg, #4CAF50, #8BC34A);
-                width: 0%;
-            }
-        </style>
+        <!-- Chart.js para los gráficos -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </head>
     <body>
         <div class="top-bar">
             <div class="logo">
-                <img src="{{ asset('img/logo/logo.webp') }}" alt="ERSENA Logo">
+                <img src="{{ asset('img/logo/logoSena.png') }}" alt="ERSENA Logo">
             </div>
             <div id="anuncio-container">
                 <div class="ticker-wrapper">
@@ -43,9 +31,10 @@
             </a>
         </div>
 
-        <div class="main-content">
-            <div class="container">
-                <div class="header">
+        <!-- Vista principal - Solo Tabla de asistencias -->
+        <div class="dashboard-view active" id="main-view">
+            <div class="table-dashboard">
+                <div class="header-widget">
                     <div class="header-content-left">
                         <h1>SENA Regional Caquetá</h1>
                         <div class="subtitle-container">
@@ -61,28 +50,68 @@
                         <span id="update-time"></span>
                     </div>
                 </div>
-
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Aprendiz</th>
-                                <th>Programa</th>
-                                <th>Jornada</th>
-                                <th>Registro</th>
-                            </tr>
-                        </thead>
-                        <tbody id="asistencias-body">
-                            <!-- Los datos serán cargados dinámicamente -->
-                        </tbody>
-                    </table>
+                
+                <div class="main-table-widget" style="flex-grow: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; box-shadow: var(--shadow-card); overflow: hidden;">
+                    <div class="table-header">
+                        <h3 class="widget-title"><i class="fas fa-users"></i> Registro de Asistencias</h3>
+                        <div class="view-tabs">
+                            <div class="view-tab" data-view="all">Todos</div>
+                            <div class="view-tab active" data-view="entrada">Entradas</div>
+                            <div class="view-tab" data-view="salida">Salidas</div>
+                        </div>
+                    </div>
+                    <div class="table-scroll-container" style="flex-grow: 1; overflow-y: auto; padding: 0 16px;">
+                        <div id="asistencias-simple">
+                                <!-- Los datos serán cargados dinámicamente -->
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+        
+        <!-- Vista de actividad reciente -->
+        <div class="dashboard-view" id="activity-view">
+            <div class="table-dashboard">
+                <div class="header-widget">
+                    <div class="header-content-left">
+                        <h1>SENA Regional Caquetá</h1>
+                        <div class="subtitle-container">
+                            <h2>Actividad Reciente</h2>
+                        </div>
+                    </div>
+                    <div class="update-time-container">
+                        <i class="fas fa-clock"></i>
+                        <span id="update-time-activity"></span>
+                    </div>
+                </div>
+                
+                <div class="main-table-widget" style="flex-grow: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; box-shadow: var(--shadow-card); overflow: hidden;">
+                    <div class="table-header">
+                        <h3 class="widget-title"><i class="fas fa-history"></i> Últimas Actividades</h3>
+                        </div>
+                    <div class="timeline" id="activity-timeline" style="padding: 20px; overflow-y: auto; height: calc(100vh - 240px);">
+                        <!-- Se llenará dinámicamente con datos de actividad reciente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Botón para alternar entre vistas -->
+        <div class="view-toggle" id="view-toggle">
+            <i class="fas fa-exchange-alt"></i>
         </div>
 
         <script>
             let asistenciasInterval;
-
+            let currentView = 'entrada'; // Por defecto mostrar solo entradas
+            let programsChart = null;
+            let jornadasChart = null;
+            let weeklyChart = null;
+            let horasChart = null;
+            let asistenciasDiarias = [];
+            let activeView = 'main-view';
+            let viewRotationInterval = null;
+            
             // Inicializar cuando se carga el documento
             document.addEventListener('DOMContentLoaded', function() {
                 // Cargar asistencias inmediatamente
@@ -90,163 +119,21 @@
                 
                 // Configurar actualización automática cada 1 segundo
                 asistenciasInterval = setInterval(loadAsistencias, 1000);
-            });
-
-            function loadAsistencias() {
-                fetch('/api/asistencias/diarias')
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Error en la respuesta del servidor: ' + response.status);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('Datos recibidos:', data); // Debug
-                        if (data.status === 'success') {
-                            updateTable(data.data);
-                            updateCounter(data.data);
-                            document.getElementById('update-time').textContent = 
-                                new Date().toLocaleTimeString('es-CO', { 
-                                    hour: '2-digit', 
-                                    minute: '2-digit',
-                                    second: '2-digit',
-                                    hour12: true 
-                                });
-                        } else {
-                            console.error('Error en los datos:', data);
-                            throw new Error(data.message || 'Error al cargar las asistencias');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error al cargar asistencias:', error);
-                        document.getElementById('asistencias-body').innerHTML = `
-                            <tr>
-                                <td colspan="4" class="text-center py-4">
-                                    <div class="error-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        Error al cargar las asistencias: ${error.message}
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
-                    });
-            }
-
-            function updateTable(asistencias) {
-                const tableBody = document.getElementById('asistencias-body');
                 
-                if (!asistencias || asistencias.length === 0) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="text-center py-4">
-                                <div class="empty-message">
-                                    <i class="fas fa-info-circle"></i>
-                                    No hay asistencias registradas para el día de hoy
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                    return;
-                }
-
-                // Agrupar asistencias por usuario
-                const asistenciasPorUsuario = {};
-                asistencias.forEach(asistencia => {
-                    if (!asistenciasPorUsuario[asistencia.user_id]) {
-                        asistenciasPorUsuario[asistencia.user_id] = {
-                            user: asistencia.user,
-                            entrada: null,
-                            salida: null
-                        };
-                    }
-                    if (asistencia.tipo === 'entrada') {
-                        asistenciasPorUsuario[asistencia.user_id].entrada = asistencia;
-                    } else if (asistencia.tipo === 'salida') {
-                        asistenciasPorUsuario[asistencia.user_id].salida = asistencia;
-                    }
-                });
-
-                // Convertir a array y ordenar por hora de entrada más reciente
-                const registrosOrdenados = Object.values(asistenciasPorUsuario)
-                    .sort((a, b) => {
-                        const fechaA = a.entrada ? new Date(a.entrada.fecha_hora) : new Date(0);
-                        const fechaB = b.entrada ? new Date(b.entrada.fecha_hora) : new Date(0);
-                        return fechaB - fechaA;
+                // Configurar tabs de vista
+                setupViewTabs();
+            });
+            
+            function setupViewTabs() {
+                document.querySelectorAll('.view-tab').forEach(tab => {
+                    tab.addEventListener('click', function() {
+                        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+                        this.classList.add('active');
+                        currentView = this.dataset.view;
+                        if (asistenciasDiarias.length > 0) {
+                            updateTable(asistenciasDiarias);
+                        }
                     });
-
-                tableBody.innerHTML = '';
-                registrosOrdenados.forEach(registro => {
-                    const user = registro.user;
-                    if (!user) return;
-
-                    const horaEntrada = registro.entrada ? formatTime(registro.entrada.fecha_hora) : '---';
-                    const horaSalida = registro.salida ? formatTime(registro.salida.fecha_hora) : '---';
-                    const row = document.createElement('tr');
-                    
-                    row.innerHTML = `
-                            <td>
-                                <div class="user-info">
-                                    <div class="user-name">${user.nombres_completos || 'N/A'}</div>
-                                    <div class="user-details">
-                                        <div class="user-doc">Doc: ${user.documento_identidad || 'N/A'}</div>
-                                        ${user.devices && user.devices.length > 0 ? `
-                                            <div class="device-info">
-                                                <i class="fas fa-laptop"></i>
-                                                ${user.devices[0].marca} - ${user.devices[0].serial}
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="program-info">
-                                    <div class="program-name">${user.programa_formacion?.nombre_programa || 'N/A'}</div>
-                                    <div class="program-details">
-                                        <div class="program-nivel">
-                                            <i class="fas fa-graduation-cap"></i>
-                                            ${user.programa_formacion?.nivel_formacion?.toUpperCase() || 'N/A'}
-                                        </div>
-                                        <div>Ficha: ${user.programa_formacion?.numero_ficha || 'N/A'}</div>
-                                        <div>Ambiente: ${user.programa_formacion?.numero_ambiente || 'N/A'}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="jornada-info">
-                                    <span class="badge badge-jornada">
-                                        <i class="fas fa-clock"></i>
-                                        ${user.jornada?.nombre?.toUpperCase() || 'N/A'}
-                                    </span>
-                                    <div class="jornada-details">
-                                        <div>Entrada: ${user.jornada?.hora_entrada || 'N/A'}</div>
-                                        <div>Tolerancia: ${user.jornada?.tolerancia || '5 min'}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="time-info">
-                                    <div class="registro-tiempo ${registro.entrada ? 'presente' : ''}">
-                                        <span class="badge badge-entrada">
-                                            <i class="fas fa-sign-in-alt"></i>
-                                            ${horaEntrada}
-                                        </span>
-                                    </div>
-                                    <div class="registro-tiempo ${registro.salida ? 'presente' : ''}">
-                                        <span class="badge badge-salida">
-                                            <i class="fas fa-sign-out-alt"></i>
-                                            ${horaSalida}
-                                        </span>
-                                    </div>
-                                </div>
-                            </td>`;
-
-                    // Efecto de nueva entrada
-                    if (registro.entrada && isRecent(registro.entrada.fecha_hora)) {
-                        row.classList.add('new-entry');
-                        setTimeout(() => row.classList.remove('new-entry'), 5000);
-                    }
-
-                    tableBody.appendChild(row);
                 });
             }
             
@@ -294,6 +181,133 @@
                         element.textContent = Math.round(current);
                     }
                 }, stepTime);
+            }
+            
+            function updateAllCharts(asistencias) {
+                // No hay gráficos para actualizar
+            }
+
+            function loadAsistencias() {
+                fetch('/api/asistencias/diarias')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Error en la respuesta del servidor: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'success') {
+                            asistenciasDiarias = data.data;
+                            updateTable(data.data);
+                            updateCounter(data.data);
+                            updateAllCharts(data.data);
+                            
+                            const currentTime = new Date().toLocaleTimeString('es-CO', { 
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: true 
+                            });
+                            
+                            document.getElementById('update-time').textContent = currentTime;
+                        } else {
+                            console.error('Error en los datos:', data);
+                            throw new Error(data.message || 'Error al cargar las asistencias');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al cargar asistencias:', error);
+                        document.getElementById('asistencias-simple').innerHTML = `
+                            <div class="error-message" style="padding: 32px 0;">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        Error al cargar las asistencias: ${error.message}
+                                    </div>
+                        `;
+                    });
+            }
+
+            function updateTable(asistencias) {
+                const tableContainer = document.getElementById('asistencias-simple');
+                
+                if (!asistencias || asistencias.length === 0) {
+                    tableContainer.innerHTML = `
+                        <div class="empty-message" style="padding: 32px 0;">
+                            <i class="fas fa-info-circle"></i>
+                            No hay asistencias registradas para el día de hoy
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Filtrar las asistencias según la vista seleccionada
+                const asistenciasFiltradas = asistencias.filter(asistencia => {
+                    if (currentView === 'all') return true;
+                    if (currentView === 'entrada') return asistencia.tipo === 'entrada';
+                    if (currentView === 'salida') return asistencia.tipo === 'salida';
+                    return true;
+                });
+                
+                // Ordenar por fecha más reciente
+                const asistenciasOrdenadas = asistenciasFiltradas.sort((a, b) => {
+                    return new Date(b.fecha_hora) - new Date(a.fecha_hora);
+                });
+
+                tableContainer.innerHTML = '';
+                
+                // Mostrar cada asistencia individualmente
+                asistenciasOrdenadas.forEach(asistencia => {
+                    if (!asistencia.user) return;
+                    
+                    const user = asistencia.user;
+                    const element = document.createElement('div');
+                    element.className = 'simple-entry';
+                    
+                    if (isRecent(asistencia.fecha_hora)) {
+                        element.classList.add('new-entry');
+                    }
+                    
+                    element.innerHTML = `
+                        <div class="entry-icon ${asistencia.tipo}">
+                            <i class="fas fa-sign-${asistencia.tipo === 'entrada' ? 'in' : 'out'}-alt"></i>
+                        </div>
+                        <div class="entry-details">
+                            <div class="entry-user-info">
+                                <div class="entry-user">${user.nombres_completos || 'N/A'}</div>
+                                <div class="entry-program">${user.programa_formacion?.nombre_programa || 'Sin programa'}</div>
+                            </div>
+                            
+                            <div class="entry-ficha">
+                                <div class="entry-label">Ficha</div>
+                                <div class="entry-value">${user.programa_formacion?.numero_ficha || 'N/A'}</div>
+                            </div>
+                            
+                            <div class="entry-ambiente">
+                                <div class="entry-label">Ambiente</div>
+                                <div class="entry-value">${user.programa_formacion?.numero_ambiente || 'N/A'}</div>
+                            </div>
+                            
+                            <div class="entry-device">
+                                <div class="entry-label">Equipo</div>
+                                <div class="entry-value">
+                                    ${user.devices && user.devices.length > 0 && user.devices[0].marca 
+                                        ? `${user.devices[0].marca} ${user.devices[0].serial || ''}` 
+                                        : 'No registrado'}
+                                </div>
+                            </div>
+                            
+                            <div class="entry-jornada">
+                                <div class="entry-label">Jornada</div>
+                                ${user.jornada?.nombre?.toUpperCase() || 'N/A'}
+                            </div>
+                            
+                            <div class="entry-time">
+                                ${formatTime(asistencia.fecha_hora)}
+                            </div>
+                        </div>
+                    `;
+                    
+                    tableContainer.appendChild(element);
+                });
             }
 
             class MessageTicker {

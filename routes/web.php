@@ -53,6 +53,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     
     // Reportes
     Route::get('/reportes', [AdminController::class, 'reportes'])->name('admin.reportes');
+    Route::post('/reportes/generar-pdf', [AdminController::class, 'generarReportesPDF'])->name('admin.reportes.pdf');
     
     // Configuración
     Route::get('/configuracion', [AdminController::class, 'configuracion'])->name('admin.configuracion');
@@ -68,6 +69,20 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     
     // Registrar asistencia
     Route::post('/registrar-asistencia', [AdminController::class, 'registrarAsistencia'])->name('admin.registrar-asistencia');
+
+    // API para buscar aprendices
+    Route::get('/api/buscar-aprendices', [AdminController::class, 'buscarAprendices'])->name('admin.api.buscar-aprendices');
+    
+    // API para aprendices
+    Route::get('/api/aprendices/{id}', [AdminController::class, 'getAprendiz'])->name('admin.api.getAprendiz');
+    Route::get('/api/aprendices/{id}/asistencias', [AdminController::class, 'getAprendizAsistencias'])->name('admin.api.getAprendizAsistencias');
+    Route::get('/api/aprendices/{id}/estadisticas', [AdminController::class, 'getAprendizEstadisticas'])->name('admin.api.getAprendizEstadisticas');
+    Route::get('/api/aprendices/{id}/dispositivos', [AdminController::class, 'getAprendizDispositivos'])->name('admin.api.getAprendizDispositivos');
+    Route::get('/api/filtrar-aprendices', [AdminController::class, 'filtrarAprendices'])->name('admin.api.filtrarAprendices');
+    Route::delete('/aprendices/{id}', [AdminController::class, 'eliminarAprendiz'])->name('admin.aprendices.eliminar');
+    Route::get('/aprendices/exportar', [AdminController::class, 'exportarAprendices'])->name('admin.aprendices.exportar');
+    Route::get('/aprendices/{id}/edit', [AdminController::class, 'editarAprendiz'])->name('admin.aprendices.edit');
+    Route::get('/aprendices/create', [AdminController::class, 'crearAprendiz'])->name('admin.aprendices.create');
 });
 
 Route::middleware(['auth', 'role:aprendiz'])->group(function () {

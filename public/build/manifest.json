@@ -4,6 +4,11 @@
     "src": "public/css/admin.css",
     "isEntry": true
   },
+  "public/css/aprendices.css": {
+    "file": "assets/aprendices-CJhloQzh.css",
+    "src": "public/css/aprendices.css",
+    "isEntry": true
+  },
   "public/css/common.css": {
     "file": "assets/common-9krVqmhN.css",
     "src": "public/css/common.css",

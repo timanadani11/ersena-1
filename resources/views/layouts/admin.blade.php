@@ -8,9 +8,10 @@
     @vite(['resources/css/app.css'])
     <link rel="stylesheet" href="{{ asset('css/common.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/aprendices.css') }}">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&family=Poppins:wght@300;400;500;600&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="icon" href="{{ asset('img/icon/icono.ico') }}" type="image/x-icon">
+    <link rel="icon" href="{{ asset('img/icon/logoSena.png') }}" type="image/png">
     <!-- Scripts base -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
@@ -30,7 +31,7 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="{{ asset('img/logo/logo.webp') }}" alt="Logo SENA">
+                <img src="{{ asset('img/logo/logoSena.png') }}" alt="Logo SENA">
                 <h3>Panel Admin</h3>
                 <button id="sidebar-toggle-mobile" class="sidebar-toggle-mobile">
                     <i class="fas fa-times"></i>

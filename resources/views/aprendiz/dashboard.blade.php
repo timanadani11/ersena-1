@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="icon" href="{{ asset('img/icon/icono.ico') }}" type="image/ico">
+    <link rel="icon" href="{{ asset('img/icon/logoSena.png') }}" type="image/png">
 </head>
 <body>
     <!-- Botón de menú móvil -->
@@ -23,7 +23,7 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo-container">
-                    <img src="{{ asset('img/logo/logo.webp') }}" alt="ERSENA Logo">
+                    <img src="{{ asset('img/logo/logoSena.png') }}" alt="ERSENA Logo">
                     <span class="logo-text">ERSENA</span>
                 </div>
             </div>

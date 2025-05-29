@@ -9,7 +9,7 @@ class Jornada extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nombre', 'hora_entrada', 'tolerancia'];
+    protected $fillable = ['nombre', 'hora_entrada', 'hora_salida', 'tolerancia'];
 
     public function users()
     {

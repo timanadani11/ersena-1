@@ -10,13 +10,13 @@
     <link rel="stylesheet" href="{{ asset('css/login.css') }}">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&family=Poppins&display=swap">
     <!-- icon -->
-    <link rel="icon" href="{{ asset('img/icon/icono.ico') }}" type="image/x-icon">
+    <link rel="icon" href="{{ asset('img/icon/logoSena.png') }}" type="image/png">
 </head> 
 <body class="index-page">
 
     <header class="index-header">
         <div class="logo">
-            <img src="{{ asset('img/logo/logo.webp') }}" alt="logo">
+            <img src="{{ asset('img/logo/logoSena.png') }}" alt="logo">
         </div>
     </header>
 

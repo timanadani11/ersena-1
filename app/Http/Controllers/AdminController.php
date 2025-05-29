@@ -13,6 +13,9 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\AsistenciasExport;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class AdminController extends Controller
 {
@@ -47,8 +50,16 @@ class AdminController extends Controller
             ->latest()
             ->paginate(15);
         
+        // Obtener programas de formación para filtrado
+        $programas = ProgramaFormacion::orderBy('nombre_programa')->get();
+        
+        // Obtener jornadas para filtrado
+        $jornadas = Jornada::orderBy('nombre')->get();
+        
         return view('admin.aprendices.index', [
-            'aprendices' => $aprendices
+            'aprendices' => $aprendices,
+            'programas' => $programas,
+            'jornadas' => $jornadas
         ]);
     }
 
@@ -71,7 +82,13 @@ class AdminController extends Controller
      */
     public function reportes()
     {
-        return view('admin.reportes.index');
+        $programas = ProgramaFormacion::all();
+        $jornadas = Jornada::all();
+        
+        return view('admin.reportes.index', [
+            'programas' => $programas,
+            'jornadas' => $jornadas
+        ]);
     }
 
     /**
@@ -87,12 +104,65 @@ class AdminController extends Controller
      */
     public function asistencias()
     {
-        $asistencias = Asistencia::with(['user.programaFormacion', 'user.jornada'])
-            ->latest()
-            ->paginate(20);
+        // Preparar filtros desde la solicitud
+        $filtros = request()->only(['fecha_inicio', 'fecha_fin', 'programa_id', 'jornada_id', 'tipo', 'search']);
+        
+        // Construir la consulta con los filtros
+        $query = Asistencia::with(['user.programaFormacion', 'user.jornada']);
+        
+        // Filtro por fecha de inicio
+        if (!empty($filtros['fecha_inicio'])) {
+            $query->whereDate('fecha_hora', '>=', $filtros['fecha_inicio']);
+        }
+        
+        // Filtro por fecha de fin
+        if (!empty($filtros['fecha_fin'])) {
+            $query->whereDate('fecha_hora', '<=', $filtros['fecha_fin']);
+        }
+        
+        // Filtro por programa
+        if (!empty($filtros['programa_id'])) {
+            $query->whereHas('user.programaFormacion', function($q) use ($filtros) {
+                $q->where('id', $filtros['programa_id']);
+            });
+        }
+        
+        // Filtro por jornada
+        if (!empty($filtros['jornada_id'])) {
+            $query->whereHas('user', function($q) use ($filtros) {
+                $q->where('jornada_id', $filtros['jornada_id']);
+            });
+        }
+        
+        // Filtro por tipo (entrada/salida)
+        if (!empty($filtros['tipo'])) {
+            $query->where('tipo', $filtros['tipo']);
+        }
+        
+        // Búsqueda por nombre o documento
+        if (!empty($filtros['search'])) {
+            $search = $filtros['search'];
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('nombres_completos', 'like', "%$search%")
+                  ->orWhere('documento_identidad', 'like', "%$search%");
+            });
+        }
+        
+        // Ordenar por fecha descendente
+        $query->latest('fecha_hora');
+        
+        // Paginar resultados
+        $asistencias = $query->paginate(20)->withQueryString();
+        
+        // Obtener programas y jornadas para los filtros
+        $programas = ProgramaFormacion::all();
+        $jornadas = Jornada::all();
         
         return view('admin.asistencias.index', [
-            'asistencias' => $asistencias
+            'asistencias' => $asistencias,
+            'programas' => $programas,
+            'jornadas' => $jornadas,
+            'filtros' => $filtros
         ]);
     }
 
@@ -260,80 +330,192 @@ class AdminController extends Controller
         ];
     }
 
+    /**
+     * Verificar asistencia y mostrar botones correspondientes
+     */
     public function verificarAsistencia(Request $request)
     {
         $request->validate([
             'documento_identidad' => 'required|string',
         ]);
 
+        // Buscar al aprendiz
         $user = User::where('documento_identidad', $request->documento_identidad)
             ->where('rol', 'aprendiz')
-            ->with([
-                'programaFormacion',
-                'jornada',
-                'devices' => function($query) {
-                    $query->latest()->first();
-                }
-            ])
+            ->with(['programaFormacion', 'jornada'])
             ->first();
 
         if (!$user) {
             return response()->json(['error' => 'Aprendiz no encontrado'], 404);
         }
 
-        // Obtener todas las asistencias del día para el usuario
-        $asistenciasHoy = Asistencia::where('user_id', $user->id)
-            ->whereDate('fecha_hora', now()->setTimezone('America/Bogota')->format('Y-m-d'))
-            ->orderBy('fecha_hora', 'desc')
-            ->get();
-
-        // Contar entradas y salidas
-        $entradasHoy = $asistenciasHoy->where('tipo', 'entrada')->count();
-        $salidasHoy = $asistenciasHoy->where('tipo', 'salida')->count();
-
-        // Si ya tiene entrada y salida, no puede registrar más
-        if ($entradasHoy >= 1 && $salidasHoy >= 1) {
-            return response()->json([
-                'user' => $user,
-                'puede_registrar_entrada' => false,
-                'puede_registrar_salida' => false,
-                'mensaje' => 'Ya completó los registros de entrada y salida para hoy',
-                'asistencias_hoy' => $asistenciasHoy,
-                'estadisticas' => [
-                    'entradas_totales' => $entradasHoy,
-                    'salidas_totales' => $salidasHoy,
-                    'hora_jornada' => $user->jornada ? $user->jornada->hora_entrada : null,
-                    'tolerancia' => $user->jornada ? $user->jornada->tolerancia : null
-                ]
-            ]);
-        }
-
-        // Solo puede registrar entrada si no tiene entradas hoy
-        $puedeRegistrarEntrada = $entradasHoy === 0;
+        // Verificar asistencias del día
+        $fechaHoy = now()->setTimezone('America/Bogota')->format('Y-m-d');
         
-        // Solo puede registrar salida si tiene una entrada y no tiene salidas
-        $puedeRegistrarSalida = $entradasHoy === 1 && $salidasHoy === 0;
+        $entrada = Asistencia::where('user_id', $user->id)
+            ->whereDate('fecha_hora', $fechaHoy)
+            ->where('tipo', 'entrada')
+            ->exists();
+            
+        $salida = Asistencia::where('user_id', $user->id)
+            ->whereDate('fecha_hora', $fechaHoy)
+            ->where('tipo', 'salida')
+            ->exists();
 
-        // Obtener la última asistencia registrada (histórico)
-        $ultimaAsistencia = Asistencia::where('user_id', $user->id)
-            ->orderBy('fecha_hora', 'desc')
-            ->first();
+        // Verificar horarios
+        $horaActual = now()->setTimezone('America/Bogota');
+        $fueraHorarioEntrada = $this->estaFueraHorarioEntrada($user->jornada, $horaActual);
+        $salidaAnticipada = $this->esSalidaAnticipada($user->jornada, $horaActual);
 
         return response()->json([
             'user' => $user,
-            'puede_registrar_entrada' => $puedeRegistrarEntrada,
-            'puede_registrar_salida' => $puedeRegistrarSalida,
-            'asistencias_hoy' => $asistenciasHoy,
-            'ultima_asistencia' => $ultimaAsistencia,
-            'estadisticas' => [
-                'entradas_totales' => $entradasHoy,
-                'salidas_totales' => $salidasHoy,
-                'hora_jornada' => $user->jornada ? $user->jornada->hora_entrada : null,
-                'tolerancia' => $user->jornada ? $user->jornada->tolerancia : null
-            ]
+            'puede_registrar_entrada' => !$entrada,
+            'puede_registrar_salida' => $entrada && !$salida,
+            'requiere_motivo_entrada' => $fueraHorarioEntrada && !$entrada,
+            'requiere_motivo_salida' => $salidaAnticipada && $entrada && !$salida
         ]);
     }
 
+    /**
+     * Verificar si está fuera del horario de entrada
+     */
+    private function estaFueraHorarioEntrada($jornada, $horaActual)
+    {
+        if (!$jornada || !$jornada->hora_entrada) {
+            return false;
+        }
+
+        $horaEntrada = Carbon::createFromFormat('H:i:s', $jornada->hora_entrada, 'America/Bogota');
+        $horaEntrada->setDate($horaActual->year, $horaActual->month, $horaActual->day);
+        
+        $tolerancia = $jornada->tolerancia ?? 15;
+        $horaLimite = $horaEntrada->copy()->addMinutes($tolerancia);
+
+        return $horaActual->gt($horaLimite);
+    }
+
+    /**
+     * Verificar si es salida anticipada
+     */
+    private function esSalidaAnticipada($jornada, $horaActual)
+    {
+        if (!$jornada || !$jornada->hora_salida) {
+            return false;
+        }
+
+        $horaSalida = Carbon::createFromFormat('H:i:s', $jornada->hora_salida, 'America/Bogota');
+        $horaSalida->setDate($horaActual->year, $horaActual->month, $horaActual->day);
+        
+        // Margen de 20 minutos
+        $horaSalidaConMargen = $horaSalida->copy()->subMinutes(20);
+
+        return $horaActual->lt($horaSalidaConMargen);
+    }
+
+    /**
+     * Registrar asistencia (entrada o salida)
+     */
+    public function registrarAsistencia(Request $request)
+    {
+        try {
+            // Validación básica
+            $request->validate([
+                'documento_identidad' => 'required|string',
+                'tipo' => 'required|in:entrada,salida',
+                'motivo' => 'nullable|string',
+                'observaciones' => 'nullable|string'
+            ]);
+
+            // Encontrar el usuario
+            $user = User::where('documento_identidad', $request->documento_identidad)
+                ->where('rol', 'aprendiz')
+                ->with('jornada')
+                ->first();
+
+            if (!$user) {
+                return response()->json(['error' => 'Aprendiz no encontrado'], 404);
+            }
+            
+            // Verificar asistencias del día
+            $fechaHoy = now()->setTimezone('America/Bogota')->format('Y-m-d');
+            
+            $entrada = Asistencia::where('user_id', $user->id)
+                ->whereDate('fecha_hora', $fechaHoy)
+                ->where('tipo', 'entrada')
+                ->exists();
+                
+            $salida = Asistencia::where('user_id', $user->id)
+                ->whereDate('fecha_hora', $fechaHoy)
+                ->where('tipo', 'salida')
+                ->exists();
+                
+            // Verificar si puede registrar este tipo de asistencia
+            if ($request->tipo === 'entrada' && $entrada) {
+                return response()->json(['error' => 'Ya tiene entrada registrada hoy'], 400);
+            }
+            
+            if ($request->tipo === 'salida' && (!$entrada || $salida)) {
+                return response()->json(['error' => 'No puede registrar salida'], 400);
+            }
+
+            // Verificar condiciones especiales
+            $horaActual = now()->setTimezone('America/Bogota');
+            $fueraHorarioEntrada = $this->estaFueraHorarioEntrada($user->jornada, $horaActual);
+            $salidaAnticipada = $this->esSalidaAnticipada($user->jornada, $horaActual);
+
+            // Crear registro de asistencia
+            $asistencia = new Asistencia();
+            $asistencia->user_id = $user->id;
+            $asistencia->tipo = $request->tipo;
+            $asistencia->fecha_hora = $horaActual;
+            $asistencia->registrado_por = Auth::id() ?? 1;
+            
+            // Manejar motivos según el tipo
+            if ($request->tipo === 'entrada') {
+                $asistencia->fuera_de_horario = $fueraHorarioEntrada;
+                if ($fueraHorarioEntrada && $request->has('motivo')) {
+                    $asistencia->motivo_entrada = $request->motivo;
+                }
+            } else { // salida
+                $asistencia->salida_anticipada = $salidaAnticipada;
+                if ($salidaAnticipada && $request->has('motivo')) {
+                    $asistencia->motivo_salida = $request->motivo;
+                }
+            }
+            
+            if ($request->has('observaciones')) {
+                $asistencia->observaciones = $request->observaciones;
+            }
+            
+            // Guardar foto si existe
+            if ($request->hasFile('foto_autorizacion')) {
+                $foto = $request->file('foto_autorizacion');
+                $nombreFoto = 'autorizacion_' . $user->id . '_' . time() . '.' . $foto->getClientOriginalExtension();
+                $foto->storeAs('public/autorizaciones', $nombreFoto);
+                $asistencia->foto_autorizacion = $nombreFoto;
+            }
+            
+            // Guardar la asistencia
+            $asistencia->save();
+            
+            return response()->json([
+                'message' => 'Asistencia registrada correctamente',
+                'tipo' => $request->tipo,
+                'hora' => $asistencia->fecha_hora->format('H:i:s'),
+                'asistencia' => $asistencia
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error en registrarAsistencia: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Error al registrar la asistencia: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Buscar aprendiz por código QR
+     */
     public function buscarPorQR(Request $request)
     {
         try {
@@ -342,121 +524,407 @@ class AdminController extends Controller
             ]);
 
             $codigo = trim($request->qr_code);
-            Log::info('Código recibido en buscarPorQR: ' . $codigo);
-
-            // Primero intenta buscar por QR code (para QRs generados por el sistema)
+            
+            // Intentar buscar por código QR
             $user = User::where('qr_code', $codigo)
                 ->where('rol', 'aprendiz')
-                ->with(['programaFormacion', 'devices', 'jornada'])
                 ->first();
 
-            Log::info('Búsqueda por QR: ' . ($user ? 'Usuario encontrado' : 'Usuario no encontrado'));
-
-            // Si no encuentra por QR, intenta buscar por documento de identidad
+            // Si no se encuentra, intentar por documento de identidad
             if (!$user) {
-                // Limpiamos el código para asegurarnos que solo contiene números
                 $documento = preg_replace('/[^0-9]/', '', $codigo);
-                Log::info('Intentando con documento limpio: ' . $documento);
                 
                 if (!empty($documento)) {
                     $user = User::where('documento_identidad', $documento)
                         ->where('rol', 'aprendiz')
-                        ->with(['programaFormacion', 'devices', 'jornada'])
                         ->first();
-                    
-                    Log::info('Búsqueda por documento: ' . ($user ? 'Usuario encontrado' : 'Usuario no encontrado'));
-                } else {
-                    Log::warning('El código no contiene números: ' . $codigo);
-                    return response()->json([
-                        'error' => 'El código no contiene un documento válido',
-                        'codigo_recibido' => $codigo
-                    ], 404);
                 }
             }
 
+            // Si no se encontró usuario
             if (!$user) {
-                Log::warning('No se encontró usuario para el código/documento: ' . $codigo);
                 return response()->json([
-                    'error' => 'Aprendiz no encontrado',
-                    'codigo_recibido' => $codigo,
-                    'documento_limpio' => $documento ?? null
+                    'error' => 'Aprendiz no encontrado'
                 ], 404);
             }
 
-            Log::info('Usuario encontrado exitosamente: ' . $user->nombres_completos);
-            return $this->verificarAsistencia(new Request(['documento_identidad' => $user->documento_identidad]));
+            // Usar verificarAsistencia con el documento encontrado
+            return $this->verificarAsistencia(new Request([
+                'documento_identidad' => $user->documento_identidad
+            ]));
 
         } catch (\Exception $e) {
-            Log::error('Error en buscarPorQR: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
-                'error' => 'Error al procesar el código',
-                'mensaje' => $e->getMessage(),
-                'codigo_recibido' => $request->qr_code ?? null
+                'error' => 'Error al procesar el código: ' . $e->getMessage()
             ], 500);
         }
     }
 
-    public function registrarAsistencia(Request $request)
+    /**
+     * Exportar asistencias en formato Excel o PDF
+     */
+    public function exportAsistencias(Request $request)
     {
+        // Obtener los parámetros de filtro
+        $format = $request->get('format', 'excel');
+        
+        // Construir la consulta base
+        $query = Asistencia::query()
+            ->with(['user.programaFormacion', 'user.jornada', 'registradoPor']);
+            
+        // Aplicar filtros si existen
+        if ($request->has('fecha_inicio') && !empty($request->fecha_inicio)) {
+            $query->whereDate('fecha_hora', '>=', $request->fecha_inicio);
+        }
+        
+        if ($request->has('fecha_fin') && !empty($request->fecha_fin)) {
+            $query->whereDate('fecha_hora', '<=', $request->fecha_fin);
+        }
+        
+        if ($request->has('programa_id') && !empty($request->programa_id)) {
+            $query->whereHas('user.programaFormacion', function($q) use ($request) {
+                $q->where('id', $request->programa_id);
+            });
+        }
+        
+        if ($request->has('tipo') && !empty($request->tipo)) {
+            $query->where('tipo', $request->tipo);
+        }
+        
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('nombres_completos', 'like', "%$search%")
+                  ->orWhere('documento_identidad', 'like', "%$search%");
+            });
+        }
+        
+        // Ordenar resultados
+        $query->orderBy('fecha_hora', 'desc');
+        
+        // Obtener todos los resultados para exportación
+        $asistencias = $query->get();
+        
+        // Exportar según formato solicitado
+        if ($format == 'excel') {
+            // Crear el objeto de exportación
+            $export = new AsistenciasExport($asistencias);
+            
+            // Crear archivo Excel usando la clase
+            $fileName = 'asistencias_' . date('Y-m-d_H-i-s') . '.xls';
+            
+            return Excel::create('Asistencias', function($excel) use ($export) {
+                $excel->sheet('Asistencias', function($sheet) use ($export) {
+                    $sheet->fromArray($export->getAsistencias());
+                    
+                    // Dar formato a la cabecera
+                    $sheet->row(1, function($row) {
+                        $row->setFontWeight('bold');
+                    });
+                });
+            })->download('xls');
+        } else {
+            $pdf = PDF::loadView('exports.asistencias-pdf', [
+                'asistencias' => $asistencias
+            ]);
+            
+            return $pdf->download('asistencias.pdf');
+        }
+    }
+
+    /**
+     * Genera reportes detallados en PDF con toda la información posible
+     */
+    public function generarReportesPDF(Request $request)
+    {
+        // Validación de datos
         $request->validate([
-            'documento_identidad' => 'required|string',
-            'tipo' => 'required|in:entrada,salida',
+            'tipo_reporte' => 'required|in:diario,semanal,mensual,personalizado,programa,jornada,aprendiz',
+            'fecha_inicio' => 'required_if:tipo_reporte,personalizado|date',
+            'fecha_fin' => 'required_if:tipo_reporte,personalizado|date|after_or_equal:fecha_inicio',
+            'programa_id' => 'nullable|exists:programa_formacion,id',
+            'jornada_id' => 'nullable|exists:jornadas,id',
+            'aprendiz_id' => 'nullable|exists:users,id',
         ]);
-
-        $user = User::where('documento_identidad', $request->documento_identidad)
-            ->where('rol', 'aprendiz')
-            ->first();
-
-        if (!$user) {
-            return response()->json(['error' => 'Aprendiz no encontrado'], 404);
+        
+        // Configurar fechas según el tipo de reporte
+        $fechaInicio = null;
+        $fechaFin = null;
+        $titulo = 'Reporte de Asistencias';
+        
+        switch($request->tipo_reporte) {
+            case 'diario':
+                $fechaInicio = Carbon::now()->startOfDay();
+                $fechaFin = Carbon::now()->endOfDay();
+                $titulo = 'Reporte Diario de Asistencias - ' . $fechaInicio->format('d/m/Y');
+                break;
+            case 'semanal':
+                $fechaInicio = Carbon::now()->startOfWeek();
+                $fechaFin = Carbon::now()->endOfWeek();
+                $titulo = 'Reporte Semanal de Asistencias - Semana ' . $fechaInicio->weekOfYear;
+                break;
+            case 'mensual':
+                $fechaInicio = Carbon::now()->startOfMonth();
+                $fechaFin = Carbon::now()->endOfMonth();
+                $titulo = 'Reporte Mensual de Asistencias - ' . $fechaInicio->format('F Y');
+                break;
+            case 'personalizado':
+                $fechaInicio = Carbon::parse($request->fecha_inicio);
+                $fechaFin = Carbon::parse($request->fecha_fin)->endOfDay();
+                $titulo = 'Reporte de Asistencias - ' . $fechaInicio->format('d/m/Y') . ' al ' . $fechaFin->format('d/m/Y');
+                break;
+            case 'programa':
+                $fechaInicio = Carbon::now()->subDays(30);
+                $fechaFin = Carbon::now();
+                $programa = ProgramaFormacion::find($request->programa_id);
+                $titulo = 'Reporte de Asistencias - Programa: ' . ($programa ? $programa->nombre_programa : 'Todos');
+                break;
+            case 'jornada':
+                $fechaInicio = Carbon::now()->subDays(30);
+                $fechaFin = Carbon::now();
+                $jornada = Jornada::find($request->jornada_id);
+                $titulo = 'Reporte de Asistencias - Jornada: ' . ($jornada ? $jornada->nombre : 'Todas');
+                break;
+            case 'aprendiz':
+                $fechaInicio = Carbon::now()->subDays(30);
+                $fechaFin = Carbon::now();
+                $aprendiz = User::find($request->aprendiz_id);
+                $titulo = 'Reporte de Asistencias - Aprendiz: ' . ($aprendiz ? $aprendiz->nombres_completos : 'Todos');
+                break;
         }
+        
+        // Construir la consulta base
+        $query = Asistencia::query()
+            ->with(['user.programaFormacion', 'user.jornada', 'registradoPor']);
+            
+        // Filtrar por fechas
+        if ($fechaInicio && $fechaFin) {
+            $query->whereBetween('fecha_hora', [$fechaInicio, $fechaFin]);
+        }
+        
+        // Aplicar filtros adicionales
+        if ($request->programa_id) {
+            $query->whereHas('user.programaFormacion', function($q) use ($request) {
+                $q->where('id', $request->programa_id);
+            });
+        }
+        
+        if ($request->jornada_id) {
+            $query->whereHas('user', function($q) use ($request) {
+                $q->where('jornada_id', $request->jornada_id);
+            });
+        }
+        
+        if ($request->aprendiz_id) {
+            $query->where('user_id', $request->aprendiz_id);
+        }
+        
+        if ($request->has('tipo') && !empty($request->tipo)) {
+            $query->where('tipo', $request->tipo);
+        }
+        
+        // Ordenar resultados
+        $query->orderBy('fecha_hora', 'desc');
+        
+        // Obtener resultados
+        $asistencias = $query->get();
+        
+        // Calcular estadísticas para el reporte
+        $estadisticas = $this->calcularEstadisticasParaReporte($asistencias, $fechaInicio, $fechaFin, $request);
+        
+        // Generar PDF
+        $pdf = PDF::loadView('admin.reportes.pdf', [
+            'asistencias' => $asistencias,
+            'estadisticas' => $estadisticas,
+            'titulo' => $titulo,
+            'filtros' => [
+                'fecha_inicio' => $fechaInicio,
+                'fecha_fin' => $fechaFin,
+                'programa' => ProgramaFormacion::find($request->programa_id),
+                'jornada' => Jornada::find($request->jornada_id),
+                'aprendiz' => User::find($request->aprendiz_id),
+                'tipo' => $request->tipo
+            ]
+        ]);
+        
+        return $pdf->download('reporte_asistencias.pdf');
+    }
+    
+    /**
+     * Calcula estadísticas detalladas para los reportes
+     */
+    private function calcularEstadisticasParaReporte($asistencias, $fechaInicio, $fechaFin, $request)
+    {
+        // Contar entradas y salidas
+        $entradas = $asistencias->where('tipo', 'entrada')->count();
+        $salidas = $asistencias->where('tipo', 'salida')->count();
+        
+        // Contabilizar llegadas tarde y salidas anticipadas
+        $llegadasTarde = $asistencias->where('tipo', 'entrada')
+                                   ->where('fuera_de_horario', true)
+                                   ->count();
+        
+        $salidasAnticipadas = $asistencias->where('tipo', 'salida')
+                                        ->where('salida_anticipada', true)
+                                        ->count();
+        
+        // Porcentajes
+        $porcentajePuntualidad = $entradas > 0 ? round(100 - (($llegadasTarde / $entradas) * 100), 2) : 100;
+        
+        // Asistencias por programa
+        $asistenciasPorPrograma = [];
+        if (!$request->programa_id) {
+            $asistenciasPorPrograma = $asistencias->groupBy(function($asistencia) {
+                return $asistencia->user->programaFormacion->nombre_programa ?? 'Sin programa';
+            })->map(function($grupo) {
+                return [
+                    'total' => $grupo->count(),
+                    'entradas' => $grupo->where('tipo', 'entrada')->count(),
+                    'salidas' => $grupo->where('tipo', 'salida')->count(),
+                    'llegadas_tarde' => $grupo->where('tipo', 'entrada')->where('fuera_de_horario', true)->count()
+                ];
+            });
+        }
+        
+        // Asistencias por día de la semana
+        $asistenciasPorDia = $asistencias->groupBy(function($asistencia) {
+            $diaSemana = $asistencia->fecha_hora->dayOfWeek;
+            $nombresDias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            return $nombresDias[$diaSemana];
+        })->map(function($grupo) {
+            return [
+                'total' => $grupo->count(),
+                'entradas' => $grupo->where('tipo', 'entrada')->count()
+            ];
+        });
+        
+        return [
+            'total_asistencias' => $asistencias->count(),
+            'entradas' => $entradas,
+            'salidas' => $salidas,
+            'llegadas_tarde' => $llegadasTarde,
+            'salidas_anticipadas' => $salidasAnticipadas,
+            'porcentaje_puntualidad' => $porcentajePuntualidad,
+            'asistencias_por_programa' => $asistenciasPorPrograma,
+            'asistencias_por_dia' => $asistenciasPorDia,
+            'periodo' => [
+                'inicio' => $fechaInicio ? $fechaInicio->format('d/m/Y') : 'No especificado',
+                'fin' => $fechaFin ? $fechaFin->format('d/m/Y') : 'No especificado'
+            ]
+        ];
+    }
 
-        // Obtener asistencias del día
-        $asistenciasHoy = Asistencia::where('user_id', $user->id)
-            ->whereDate('fecha_hora', now()->setTimezone('America/Bogota')->format('Y-m-d'))
+    /**
+     * Busca aprendices por nombre o documento para los reportes
+     */
+    public function buscarAprendices(Request $request)
+    {
+        $query = $request->input('query');
+        
+        $aprendices = User::where('rol', 'aprendiz')
+            ->where(function($q) use ($query) {
+                $q->where('nombres_completos', 'like', "%$query%")
+                  ->orWhere('documento_identidad', 'like', "%$query%");
+            })
+            ->select('id', 'nombres_completos', 'documento_identidad')
+            ->limit(10)
             ->get();
+            
+        return response()->json($aprendices);
+    }
+    
+    /**
+     * Filtra aprendices por documento para la vista admin.aprendices.index
+     */
+    public function filtrarAprendices(Request $request)
+    {
+        $query = $request->input('query');
+        
+        $aprendices = User::where('rol', 'aprendiz')
+            ->with(['programaFormacion', 'jornada'])
+            ->where(function($q) use ($query) {
+                $q->where('documento_identidad', 'like', "%$query%");
+            })
+            ->get();
+        
+        return response()->json([
+            'aprendices' => $aprendices
+        ]);
+    }
 
-        $entradasHoy = $asistenciasHoy->where('tipo', 'entrada')->count();
-        $salidasHoy = $asistenciasHoy->where('tipo', 'salida')->count();
-
-        // Validaciones específicas según el tipo de registro
-        if ($request->tipo === 'entrada') {
-            if ($entradasHoy >= 1) {
-                return response()->json([
-                    'error' => 'Ya registró su entrada para el día de hoy'
-                ], 400);
-            }
-        } else { // tipo === 'salida'
-            if ($entradasHoy === 0) {
-                return response()->json([
-                    'error' => 'Debe registrar una entrada antes de registrar una salida'
-                ], 400);
-            }
-            if ($salidasHoy >= 1) {
-                return response()->json([
-                    'error' => 'Ya registró su salida para el día de hoy'
-                ], 400);
-            }
+    /**
+     * Obtiene los datos de un aprendiz específico
+     */
+    public function getAprendiz($id)
+    {
+        $aprendiz = User::where('rol', 'aprendiz')
+            ->with(['programaFormacion', 'jornada'])
+            ->findOrFail($id);
+            
+        return response()->json($aprendiz);
+    }
+    
+    /**
+     * Obtiene las asistencias de un aprendiz específico
+     */
+    public function getAprendizAsistencias($id)
+    {
+        // Obtener últimas 20 asistencias
+        $asistencias = Asistencia::where('user_id', $id)
+            ->orderBy('fecha_hora', 'desc')
+            ->take(20)
+            ->get();
+            
+        return response()->json($asistencias);
+    }
+    
+    /**
+     * Obtiene estadísticas de asistencia de un aprendiz específico
+     */
+    public function getAprendizEstadisticas($id)
+    {
+        // Obtener todas las asistencias del último mes
+        $fechaInicio = Carbon::now()->subDays(30);
+        
+        $asistencias = Asistencia::where('user_id', $id)
+            ->where('fecha_hora', '>=', $fechaInicio)
+            ->get();
+            
+        // Calcular estadísticas
+        $totalAsistencias = $asistencias->count();
+        $entradas = $asistencias->where('tipo', 'entrada')->count();
+        $llegadasTarde = $asistencias->where('tipo', 'entrada')
+                                   ->where('fuera_de_horario', true)
+                                   ->count();
+        $salidasAnticipadas = $asistencias->where('tipo', 'salida')
+                                        ->where('salida_anticipada', true)
+                                        ->count();
+                                        
+        // Calcular porcentaje de puntualidad
+        $porcentajePuntualidad = $entradas > 0 
+            ? round((($entradas - $llegadasTarde) / $entradas) * 100) 
+            : 100;
+            
+        return response()->json([
+            'total_asistencias' => $totalAsistencias,
+            'llegadas_tarde' => $llegadasTarde,
+            'salidas_anticipadas' => $salidasAnticipadas,
+            'porcentaje_puntualidad' => $porcentajePuntualidad
+        ]);
+    }
+    
+    /**
+     * Obtiene los dispositivos registrados de un aprendiz
+     */
+    public function getAprendizDispositivos($id)
+    {
+        $dispositivos = [];
+        
+        // Obtener dispositivos si existe la tabla/modelo
+        if (class_exists('App\Models\Device')) {
+            $dispositivos = \App\Models\Device::where('user_id', $id)->get();
         }
-
-        try {
-            $asistencia = Asistencia::create([
-                'user_id' => $user->id,
-                'tipo' => $request->tipo,
-                'fecha_hora' => now()->setTimezone('America/Bogota'),
-                'registrado_por' => Auth::id(),
-            ]);
-
-            return response()->json([
-                'message' => 'Asistencia registrada correctamente',
-                'asistencia' => $asistencia
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error al registrar asistencia: ' . $e->getMessage());
-            return response()->json([
-                'error' => 'Error al registrar la asistencia'
-            ], 500);
-        }
+        
+        return response()->json($dispositivos);
     }
 }

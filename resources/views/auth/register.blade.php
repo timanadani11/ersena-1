@@ -9,14 +9,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ asset('css/common.css') }}">
     <link href="{{ asset('css/register.css') }}" rel="stylesheet">
-    <link rel="icon" href="{{ asset('img/icon/icono.ico') }}" type="image/x-icon">
+    <link rel="icon" href="{{ asset('img/icon/logoSena.png') }}" type="image/png">
 </head>
 <body class="register-page">
     <div class="register-container">
         <div class="register-card">
             <div class="register-header-content">
             <div class="register-logo">
-                <img src="{{ asset('img/logo/logo.webp') }}" alt="Logo SENA" loading="lazy">
+                <img src="{{ asset('img/logo/logoSena.png') }}" alt="Logo SENA" loading="lazy">
             </div>
                 <h2 class="register-title">Registro de Aprendiz</h2>
                 
