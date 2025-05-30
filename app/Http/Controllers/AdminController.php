@@ -927,4 +927,83 @@ class AdminController extends Controller
         
         return response()->json($dispositivos);
     }
+
+    /**
+     * Busca aprendices por documento o nombre
+     */
+    public function buscarAprendiz(Request $request)
+    {
+        $documento = $request->input('documento', '');
+        
+        $aprendices = User::where('rol', 'aprendiz')
+            ->where(function($query) use ($documento) {
+                $query->where('documento_identidad', 'like', "%{$documento}%")
+                      ->orWhere('nombres_completos', 'like', "%{$documento}%");
+            })
+            ->with(['programaFormacion', 'jornada'])
+            ->take(20)
+            ->get();
+        
+        return response()->json([
+            'aprendices' => $aprendices,
+            'total' => count($aprendices)
+        ]);
+    }
+    
+    /**
+     * Obtiene los detalles de un aprendiz
+     */
+    public function detallesAprendiz($id)
+    {
+        $aprendiz = User::with(['programaFormacion', 'jornada'])
+            ->where('id', $id)
+            ->where('rol', 'aprendiz')
+            ->firstOrFail();
+        
+        // Obtener asistencias
+        $asistencias = Asistencia::where('user_id', $id)
+            ->orderBy('fecha_hora', 'desc')
+            ->take(30)
+            ->get()
+            ->map(function ($asistencia) {
+                return [
+                    'fecha' => Carbon::parse($asistencia->fecha_hora)->format('Y-m-d'),
+                    'hora' => Carbon::parse($asistencia->fecha_hora)->format('H:i:s'),
+                    'tipo' => ucfirst($asistencia->tipo),
+                    'estado' => $asistencia->fuera_de_horario ? 'Tarde' : 'A tiempo'
+                ];
+            });
+        
+        // Calcular estadísticas
+        $totalAsistencias = Asistencia::where('user_id', $id)
+            ->where('tipo', 'entrada')
+            ->count();
+        
+        $llegadasTarde = Asistencia::where('user_id', $id)
+            ->where('tipo', 'entrada')
+            ->where('fuera_de_horario', true)
+            ->count();
+        
+        $salidasAnticipadas = Asistencia::where('user_id', $id)
+            ->where('tipo', 'salida')
+            ->where('salida_anticipada', true)
+            ->count();
+            
+        $puntualidad = $totalAsistencias > 0 
+            ? round(100 - (($llegadasTarde / $totalAsistencias) * 100)) 
+            : 100;
+        
+        $estadisticas = [
+            'total_asistencias' => $totalAsistencias,
+            'llegadas_tarde' => $llegadasTarde,
+            'salidas_anticipadas' => $salidasAnticipadas,
+            'puntualidad' => $puntualidad
+        ];
+        
+        return response()->json([
+            'aprendiz' => $aprendiz,
+            'asistencias' => $asistencias,
+            'estadisticas' => $estadisticas
+        ]);
+    }
 }

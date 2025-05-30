@@ -1,26 +1,11 @@
 {
-  "public/css/admin.css": {
-    "file": "assets/admin-DJtfFO3X.css",
-    "src": "public/css/admin.css",
-    "isEntry": true
-  },
-  "public/css/aprendices.css": {
-    "file": "assets/aprendices-CJhloQzh.css",
-    "src": "public/css/aprendices.css",
-    "isEntry": true
-  },
-  "public/css/common.css": {
-    "file": "assets/common-9krVqmhN.css",
-    "src": "public/css/common.css",
-    "isEntry": true
-  },
   "resources/css/app.css": {
-    "file": "assets/app-OD8mnXk_.css",
+    "file": "assets/app-DW-nYLEM.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/js/app.js": {
-    "file": "assets/app-eMHK6VFw.js",
+    "file": "assets/app-Bo-u61x1.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true

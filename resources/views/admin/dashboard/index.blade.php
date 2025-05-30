@@ -5,94 +5,104 @@
 @section('page-title', 'Dashboard Administrativo')
 
 @section('content')
-<div class="dashboard-content fadeIn">
+<div class="space-y-6">
     <!-- Stats Cards -->
-    <div class="stats-cards">
-        <div class="stat-card delay-100">
-            <div class="stat-card-header">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-blue-500 transform transition duration-300 hover:scale-105">
+            <div class="flex justify-between items-center">
                 <div>
-                    <div class="stat-card-title">Total Aprendices</div>
-                    <div class="stat-card-value">{{ $estadisticas['total_aprendices'] }}</div>
+                    <div class="text-gray-500 font-medium">Total Aprendices</div>
+                    <div class="text-2xl font-bold mt-1">{{ $estadisticas['total_aprendices'] }}</div>
                 </div>
-                <div class="stat-card-icon">
-                    <i class="fas fa-users"></i>
+                <div class="bg-blue-100 p-3 rounded-full">
+                    <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
                 </div>
             </div>
         </div>
         
-        <div class="stat-card delay-200">
-            <div class="stat-card-header">
+        <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-green-500 transform transition duration-300 hover:scale-105">
+            <div class="flex justify-between items-center">
                 <div>
-                    <div class="stat-card-title">Asistencias Hoy</div>
-                    <div class="stat-card-value">{{ $estadisticas['asistencias_hoy'] }}</div>
+                    <div class="text-gray-500 font-medium">Asistencias Hoy</div>
+                    <div class="text-2xl font-bold mt-1">{{ $estadisticas['asistencias_hoy'] }}</div>
                 </div>
-                <div class="stat-card-icon">
-                    <i class="fas fa-user-check"></i>
+                <div class="bg-green-100 p-3 rounded-full">
+                    <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
                 </div>
             </div>
-            <div class="stat-card-trend">
-                <i class="fas fa-circle" style="font-size: 8px; margin-right: 4px;"></i>
+            <div class="flex items-center mt-4 text-sm text-gray-500">
+                <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                 <span>{{ $estadisticas['porcentaje_asistencia_hoy'] }}% de asistencia</span>
             </div>
         </div>
         
-        <div class="stat-card delay-300">
-            <div class="stat-card-header">
+        <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-yellow-500 transform transition duration-300 hover:scale-105">
+            <div class="flex justify-between items-center">
                 <div>
-                    <div class="stat-card-title">Tardanzas (Este mes)</div>
-                    <div class="stat-card-value">{{ $estadisticas['porcentaje_tardanzas'] }}%</div>
+                    <div class="text-gray-500 font-medium">Tardanzas (Este mes)</div>
+                    <div class="text-2xl font-bold mt-1">{{ $estadisticas['porcentaje_tardanzas'] }}%</div>
                 </div>
-                <div class="stat-card-icon">
-                    <i class="fas fa-clock"></i>
+                <div class="bg-yellow-100 p-3 rounded-full">
+                    <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
                 </div>
             </div>
         </div>
         
-        <div class="stat-card delay-400">
-            <div class="stat-card-header">
+        <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-purple-500 transform transition duration-300 hover:scale-105">
+            <div class="flex justify-between items-center">
                 <div>
-                    <div class="stat-card-title">Tendencia Semanal</div>
-                    <div class="stat-card-value">{{ $estadisticas['tendencia_semanal'] > 0 ? '+' : '' }}{{ $estadisticas['tendencia_semanal'] }}%</div>
+                    <div class="text-gray-500 font-medium">Tendencia Semanal</div>
+                    <div class="text-2xl font-bold mt-1">{{ $estadisticas['tendencia_semanal'] > 0 ? '+' : '' }}{{ $estadisticas['tendencia_semanal'] }}%</div>
                 </div>
-                <div class="stat-card-icon">
-                    <i class="fas fa-chart-line"></i>
+                <div class="bg-purple-100 p-3 rounded-full">
+                    <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                    </svg>
                 </div>
             </div>
-            <div class="stat-card-trend {{ $estadisticas['tendencia_semanal'] >= 0 ? 'trend-up' : 'trend-down' }}">
-                <i class="fas fa-{{ $estadisticas['tendencia_semanal'] >= 0 ? 'arrow-up' : 'arrow-down' }}" style="margin-right: 4px;"></i>
+            <div class="flex items-center mt-4 text-sm {{ $estadisticas['tendencia_semanal'] >= 0 ? 'text-green-500' : 'text-red-500' }}">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M{{ $estadisticas['tendencia_semanal'] >= 0 ? '13 7l5 5m0 0l-5 5m5-5H6' : '11 17l-5-5m0 0l5-5m-5 5h12' }}"></path>
+                </svg>
                 <span>vs. semana anterior</span>
             </div>
         </div>
     </div>
 
     <!-- Charts Section -->
-    <div class="charts-container">
-        <div class="chart-card">
-            <div class="chart-header">
-                <div class="chart-title">Asistencias Diarias (Últimos 7 días)</div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="mb-4">
+                <h3 class="text-lg font-semibold text-gray-700">Asistencias Diarias (Últimos 7 días)</h3>
             </div>
-            <div class="chart-wrapper">
+            <div class="h-64">
                 <canvas id="asistenciasChart"></canvas>
             </div>
         </div>
         
-        <div class="chart-card">
-            <div class="chart-header">
-                <div class="chart-title">Distribución por Programa</div>
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="mb-4">
+                <h3 class="text-lg font-semibold text-gray-700">Distribución por Programa</h3>
             </div>
-            <div class="chart-wrapper">
+            <div class="h-64">
                 <canvas id="programasChart"></canvas>
             </div>
         </div>
     </div>
     
     <!-- Puntualidad Chart -->
-    <div class="chart-card">
-        <div class="chart-header">
-            <div class="chart-title">Puntualidad (Este mes)</div>
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="mb-4">
+            <h3 class="text-lg font-semibold text-gray-700">Puntualidad (Este mes)</h3>
         </div>
-        <div class="chart-wrapper" style="display: flex; align-items: center; justify-content: center;">
-            <div style="width: 50%; max-width: 300px;">
+        <div class="flex justify-center">
+            <div class="w-full max-w-md h-64">
                 <canvas id="puntualidadChart"></canvas>
             </div>
         </div>
@@ -102,6 +112,7 @@
 
 @section('scripts')
 <script>
+    // AJAX with Fetch API
     document.addEventListener('DOMContentLoaded', function() {
         // Cargar estadísticas para gráficos
         cargarEstadisticasGraficos();
@@ -109,19 +120,30 @@
 
     // Cargar estadísticas para gráficos
     function cargarEstadisticasGraficos() {
-        $.ajax({
-            url: '{{ route("admin.estadisticas.graficos") }}',
+        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        fetch('{{ route("admin.estadisticas.graficos") }}', {
             method: 'GET',
-            success: function(response) {
-                // Inicializar los gráficos con los datos recibidos
-                inicializarGraficoAsistenciasDiarias(response.asistencias_por_dia);
-                inicializarGraficoProgramas(response.asistencias_por_programa);
-                inicializarGraficoPuntualidad(response.puntualidad);
-            },
-            error: function(error) {
-                console.error('Error al cargar estadísticas:', error);
-                showNotification('Error al cargar estadísticas de gráficos', 'error');
+            headers: {
+                'X-CSRF-TOKEN': token,
+                'Accept': 'application/json'
             }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error en la respuesta del servidor');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Inicializar los gráficos con los datos recibidos
+            inicializarGraficoAsistenciasDiarias(data.asistencias_por_dia);
+            inicializarGraficoProgramas(data.asistencias_por_programa);
+            inicializarGraficoPuntualidad(data.puntualidad);
+        })
+        .catch(error => {
+            console.error('Error al cargar estadísticas:', error);
+            showNotification('Error al cargar estadísticas de gráficos', 'error');
         });
     }
 

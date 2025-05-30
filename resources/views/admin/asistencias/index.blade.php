@@ -5,16 +5,19 @@
 @section('page-title', 'Monitoreo de Asistencias')
 
 @section('content')
-<div class="container-fluid py-4">
+<div class="container-fluid py-4" x-data="{ activeDate: '{{ $filtros['fecha'] ?? now()->format('Y-m-d') }}' }">
     <!-- Filtros flotantes minimalistas -->
-    <div class="filtros-container mb-4">
-        <form action="{{ route('admin.asistencias.index') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center w-100">
-            <div class="dropdown me-2 mb-2">
-                <button class="btn btn-filter dropdown-toggle" type="button" id="programaDropdown" data-bs-toggle="dropdown">
-                    <i class="fas fa-book-open me-1"></i> Programa
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-5 flex flex-wrap items-center gap-2">
+        <form action="{{ route('admin.asistencias.index') }}" method="GET" class="w-full flex flex-wrap gap-2 items-center">
+            <div class="relative" x-data="{ open: false }">
+                <button type="button" @click="open = !open" class="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center shadow-sm transition-all hover:-translate-y-0.5">
+                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                    Programa
                 </button>
-                <div class="dropdown-menu p-3 shadow-sm" style="width: 300px;">
-                    <select class="form-select" name="programa_id" onchange="this.form.submit()">
+                <div x-show="open" @click.away="open = false" class="absolute z-10 mt-1 bg-white rounded-md shadow-lg p-3 w-72">
+                    <select class="w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50" name="programa_id" onchange="this.form.submit()">
                         <option value="">Todos los programas</option>
                         @foreach($programas as $programa)
                             <option value="{{ $programa->id }}" {{ ($filtros['programa_id'] ?? '') == $programa->id ? 'selected' : '' }}>
@@ -25,12 +28,15 @@
                 </div>
             </div>
 
-            <div class="dropdown me-2 mb-2">
-                <button class="btn btn-filter dropdown-toggle" type="button" id="jornadaDropdown" data-bs-toggle="dropdown">
-                    <i class="fas fa-clock me-1"></i> Jornada
+            <div class="relative" x-data="{ open: false }">
+                <button type="button" @click="open = !open" class="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center shadow-sm transition-all hover:-translate-y-0.5">
+                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Jornada
                 </button>
-                <div class="dropdown-menu shadow-sm p-3">
-                    <select class="form-select" name="jornada_id" onchange="this.form.submit()">
+                <div x-show="open" @click.away="open = false" class="absolute z-10 mt-1 bg-white rounded-md shadow-lg p-3 w-64">
+                    <select class="w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50" name="jornada_id" onchange="this.form.submit()">
                         <option value="">Todas las jornadas</option>
                         @foreach($jornadas as $jornada)
                             <option value="{{ $jornada->id }}" {{ ($filtros['jornada_id'] ?? '') == $jornada->id ? 'selected' : '' }}>
@@ -41,24 +47,28 @@
                 </div>
             </div>
 
-            <div class="search-container me-2 mb-2 flex-grow-1">
-                <div class="search-box">
-                    <input type="text" name="search" class="search-input" placeholder="Buscar aprendiz..." value="{{ $filtros['search'] ?? '' }}">
-                    <button type="submit" class="search-button">
-                        <i class="fas fa-search"></i>
+            <div class="relative flex-grow">
+                <div class="flex">
+                    <input type="text" name="search" class="w-full px-4 py-2 border border-gray-200 rounded-full text-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50" placeholder="Buscar aprendiz..." value="{{ $filtros['search'] ?? '' }}">
+                    <button type="submit" class="absolute right-1 top-1 bg-green-600 text-white p-1.5 rounded-full hover:bg-green-700 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
                     </button>
                 </div>
             </div>
 
-            <a href="{{ route('admin.asistencias.index') }}" class="btn btn-outline-secondary btn-sm mb-2 ms-auto">
-                <i class="fas fa-sync-alt"></i>
+            <a href="{{ route('admin.asistencias.index') }}" class="ml-auto px-2 py-2 text-gray-500 border border-gray-200 rounded-full hover:bg-gray-100 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
             </a>
         </form>
     </div>
 
     <!-- Calendario de días (últimos 7 días) -->
-    <div class="calendar-days mb-4">
-        <div class="day-scroller">
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-6 overflow-hidden">
+        <div class="flex overflow-x-auto pb-2 space-x-4 scrollbar-thin scrollbar-thumb-green-500 scrollbar-track-gray-100" x-ref="dayScroller">
             @php
                 $today = now();
                 $dates = [];
@@ -70,10 +80,11 @@
 
             @foreach($dates as $date)
                 <a href="{{ route('admin.asistencias.index', ['fecha' => $date->format('Y-m-d')]) }}" 
-                   class="day-item {{ ($filtros['fecha'] ?? $today->format('Y-m-d')) == $date->format('Y-m-d') ? 'active' : '' }}">
-                    <span class="day-name">{{ $date->locale('es')->dayName }}</span>
-                    <span class="day-number">{{ $date->format('d') }}</span>
-                    <span class="month-name">{{ $date->locale('es')->monthName }}</span>
+                   class="flex-shrink-0 min-w-[100px] h-[100px] flex flex-col items-center justify-center rounded-xl border transition-all hover:-translate-y-1 hover:shadow-md {{ ($filtros['fecha'] ?? $today->format('Y-m-d')) == $date->format('Y-m-d') ? 'bg-green-600 text-white border-green-600 shadow-md' : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-green-500' }}"
+                   x-init="if('{{ $date->format('Y-m-d') }}' === activeDate) $nextTick(() => { $refs.dayScroller.scrollLeft = $el.offsetLeft - $refs.dayScroller.offsetWidth / 2 + $el.offsetWidth / 2 })">
+                    <span class="text-sm font-semibold capitalize">{{ $date->locale('es')->dayName }}</span>
+                    <span class="text-2xl font-bold">{{ $date->format('d') }}</span>
+                    <span class="text-xs capitalize">{{ $date->locale('es')->monthName }}</span>
                 </a>
             @endforeach
         </div>
@@ -88,16 +99,20 @@
     @endphp
 
     @forelse($groupedByDate as $date => $asistenciasPorDia)
-        <div class="date-section mb-4">
-            <div class="date-header">
-                <h4>
-                    <i class="fas fa-calendar-day"></i> 
+        <div class="bg-white rounded-lg shadow-sm p-5 mb-6 animate-fadeIn">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-100 pb-4 mb-4">
+                <h4 class="text-lg font-semibold text-gray-800 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
                     {{ \Carbon\Carbon::parse($date)->locale('es')->isoFormat('dddd, D [de] MMMM [de] YYYY') }}
                 </h4>
-                <span class="badge bg-info">{{ $asistenciasPorDia->count() }} registros</span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-2 sm:mt-0">
+                    {{ $asistenciasPorDia->count() }} registros
+                </span>
             </div>
 
-            <div class="asistencias-grid">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 @php
                     // Group by user within this date
                     $groupedByUser = $asistenciasPorDia->groupBy('user_id');
@@ -110,62 +125,65 @@
                         $salida = $asistenciasUsuario->firstWhere('tipo', 'salida');
                     @endphp
 
-                    <div class="asistencia-card">
-                        <div class="user-avatar">
-                            <div class="avatar-circle">
-                                {{ substr($user->nombres_completos, 0, 1) }}
+                    <div class="bg-gray-50 rounded-lg p-4 border-l-4 border-transparent hover:border-l-4 hover:border-green-500 transition-all hover:-translate-y-1 hover:shadow-md">
+                        <div class="flex">
+                            <div class="flex-shrink-0 mr-3">
+                                <div class="w-12 h-12 rounded-full bg-green-600 text-white flex items-center justify-center text-lg font-bold">
+                                    {{ substr($user->nombres_completos, 0, 1) }}
+                                </div>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h5 class="text-sm font-semibold text-gray-800 truncate">{{ $user->nombres_completos }}</h5>
+                                <div class="text-xs text-gray-600 truncate flex items-center">
+                                    <span class="font-mono font-medium">{{ $user->documento_identidad }}</span>
+                                    <span class="inline-block w-1 h-1 rounded-full bg-gray-300 mx-2"></span>
+                                    <span class="truncate">{{ $user->programaFormacion->nombre_programa ?? 'N/A' }}</span>
+                                </div>
+                                <div class="text-xs text-gray-600 mt-1">
+                                    <span>Ficha: </span>
+                                    <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">{{ $user->programaFormacion->numero_ficha ?? 'N/A' }}</span>
+                                    <span class="inline-block w-1 h-1 rounded-full bg-gray-300 mx-2"></span>
+                                    <span>{{ $user->jornada->nombre ?? 'N/A' }}</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="user-info">
-                            <h5 class="user-name">{{ $user->nombres_completos }}</h5>
-                            <div class="user-details">
-                                <span class="user-doc">{{ $user->documento_identidad }}</span>
-                                <span class="dot-separator"></span>
-                                <span class="user-program">{{ $user->programaFormacion->nombre_programa ?? 'N/A' }}</span>
-                            </div>
-                            <div class="user-ficha">
-                                Ficha: <span class="badge ficha-badge">{{ $user->programaFormacion->numero_ficha ?? 'N/A' }}</span>
-                                <span class="dot-separator"></span>
-                                {{ $user->jornada->nombre ?? 'N/A' }}
-                            </div>
-                        </div>
-                        <div class="asistencia-times">
-                            <div class="time-column entrada">
-                                <div class="time-label">Entrada</div>
-                                <div class="time-value {{ $entrada && $entrada->fuera_de_horario ? 'text-danger' : '' }}">
+                        <div class="flex mt-3 pt-3 border-t border-dashed border-gray-200">
+                            <div class="flex-1 text-center">
+                                <div class="text-xs text-gray-500 mb-1">Entrada</div>
+                                <div class="{{ $entrada && $entrada->fuera_de_horario ? 'text-red-600' : 'text-gray-800' }} font-bold text-base flex items-center justify-center">
                                     @if($entrada)
                                         {{ $entrada->fecha_hora->format('H:i') }}
                                         @if($entrada->fuera_de_horario)
-                                            <span class="status-icon late-icon" title="Llegada tarde">
-                                                <i class="fas fa-exclamation-circle"></i>
-                                            </span>
+                                            <svg class="w-4 h-4 ml-1 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
                                         @else
-                                            <span class="status-icon ontime-icon" title="A tiempo">
-                                                <i class="fas fa-check-circle"></i>
-                                            </span>
+                                            <svg class="w-4 h-4 ml-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
                                         @endif
                                     @else
-                                        <span class="no-registro">Sin registro</span>
+                                        <span class="text-sm text-gray-400 italic">Sin registro</span>
                                     @endif
                                 </div>
                             </div>
-                            <div class="time-divider"></div>
-                            <div class="time-column salida">
-                                <div class="time-label">Salida</div>
-                                <div class="time-value {{ $salida && $salida->salida_anticipada ? 'text-warning' : '' }}">
+                            <div class="w-px h-10 bg-gray-200 mx-4"></div>
+                            <div class="flex-1 text-center">
+                                <div class="text-xs text-gray-500 mb-1">Salida</div>
+                                <div class="{{ $salida && $salida->salida_anticipada ? 'text-amber-600' : 'text-gray-800' }} font-bold text-base flex items-center justify-center">
                                     @if($salida)
                                         {{ $salida->fecha_hora->format('H:i') }}
                                         @if($salida->salida_anticipada)
-                                            <span class="status-icon early-icon" title="Salida anticipada">
-                                                <i class="fas fa-exclamation-circle"></i>
-                                            </span>
+                                            <svg class="w-4 h-4 ml-1 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
                                         @else
-                                            <span class="status-icon ontime-icon" title="A tiempo">
-                                                <i class="fas fa-check-circle"></i>
-                                            </span>
+                                            <svg class="w-4 h-4 ml-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
                                         @endif
                                     @else
-                                        <span class="no-registro">Sin registro</span>
+                                        <span class="text-sm text-gray-400 italic">Sin registro</span>
                                     @endif
                                 </div>
                             </div>
@@ -175,383 +193,27 @@
             </div>
         </div>
     @empty
-        <div class="empty-state">
-            <div class="empty-icon">
-                <i class="fas fa-calendar-times"></i>
+        <div class="bg-white rounded-lg shadow-sm p-12 text-center">
+            <div class="text-gray-300 mb-4">
+                <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
             </div>
-            <h3>No hay registros de asistencia</h3>
-            <p>No se encontraron registros para los filtros seleccionados.</p>
+            <h3 class="text-xl font-semibold text-gray-700 mb-2">No hay registros de asistencia</h3>
+            <p class="text-gray-500 max-w-md mx-auto">No se encontraron registros para los filtros seleccionados.</p>
         </div>
     @endforelse
 
-    <!-- Paginación elegante -->
+    <!-- Paginación -->
     @if(isset($asistencias) && $asistencias->hasPages())
-        <div class="pagination-container">
+        <div class="flex justify-center mt-6">
             {{ $asistencias->links() }}
         </div>
     @endif
 </div>
 
 <style>
-/* Contenedor de filtros flotantes */
-.filtros-container {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    background-color: white;
-    border-radius: 12px;
-    padding: 15px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    margin-bottom: 20px;
-}
-
-.btn-filter {
-    background-color: white;
-    border: 1px solid rgba(0,0,0,0.1);
-    border-radius: 50px;
-    padding: 8px 16px;
-    font-size: 14px;
-    transition: all 0.3s;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    white-space: nowrap;
-}
-
-.btn-filter:hover {
-    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-    transform: translateY(-1px);
-}
-
-.search-container {
-    position: relative;
-    max-width: 100%;
-}
-
-.search-box {
-    display: flex;
-    align-items: center;
-    width: 100%;
-}
-
-.search-input {
-    padding: 8px 16px;
-    border: 1px solid rgba(0,0,0,0.1);
-    border-radius: 50px;
-    font-size: 14px;
-    width: 100%;
-    transition: all 0.3s;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 3px 8px rgba(57, 169, 0, 0.15);
-}
-
-.search-button {
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    margin-left: -40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s;
-    flex-shrink: 0;
-}
-
-.search-button:hover {
-    background-color: var(--accent-color);
-    transform: rotate(90deg);
-}
-
-/* Calendario de días */
-.calendar-days {
-    background-color: white;
-    border-radius: 15px;
-    padding: 16px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-    margin-bottom: 30px;
-    overflow: hidden;
-}
-
-.day-scroller {
-    display: flex;
-    overflow-x: auto;
-    padding-bottom: 8px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--primary-color) #f0f0f0;
-    gap: 15px;
-    -webkit-overflow-scrolling: touch;
-}
-
-.day-scroller::-webkit-scrollbar {
-    height: 6px;
-}
-
-.day-scroller::-webkit-scrollbar-track {
-    background: #f0f0f0;
-    border-radius: 10px;
-}
-
-.day-scroller::-webkit-scrollbar-thumb {
-    background-color: var(--primary-color);
-    border-radius: 10px;
-}
-
-.day-item {
-    min-width: 100px;
-    height: 100px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border-radius: 15px;
-    text-decoration: none;
-    color: #333;
-    transition: all 0.3s;
-    border: 1px solid #eee;
-    background: #f9f9f9;
-    padding: 10px;
-    flex-shrink: 0;
-}
-
-.day-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    border-color: var(--primary-color);
-}
-
-.day-item.active {
-    background: var(--primary-color);
-    color: white;
-    box-shadow: 0 5px 15px rgba(57, 169, 0, 0.3);
-}
-
-.day-name {
-    text-transform: capitalize;
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 5px;
-}
-
-.day-number {
-    font-size: 26px;
-    font-weight: bold;
-    line-height: 1;
-}
-
-.month-name {
-    font-size: 12px;
-    text-transform: capitalize;
-    margin-top: 5px;
-}
-
-/* Secciones de fecha */
-.date-section {
-    background-color: white;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-    margin-bottom: 30px;
-    animation: fadeIn 0.5s ease-out;
-}
-
-.date-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.date-header h4 {
-    font-size: 18px;
-    color: #333;
-    font-weight: 600;
-    margin: 0;
-}
-
-.asistencias-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-}
-
-/* Tarjetas de asistencia */
-.asistencia-card {
-    background-color: #fafafa;
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    flex-wrap: wrap;
-    position: relative;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    transition: all 0.3s;
-    border-left: 4px solid transparent;
-}
-
-.asistencia-card:hover {
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-    transform: translateY(-3px);
-    border-left: 4px solid var(--primary-color);
-}
-
-.user-avatar {
-    margin-right: 15px;
-    flex-shrink: 0;
-}
-
-.avatar-circle {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background-color: var(--primary-color);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    font-weight: bold;
-}
-
-.user-info {
-    flex: 1;
-    min-width: 0; /* Allow text to truncate */
-}
-
-.user-name {
-    font-size: 16px;
-    font-weight: 600;
-    margin: 0 0 5px 0;
-    color: #333;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.user-details, .user-ficha {
-    font-size: 13px;
-    color: #666;
-    margin-bottom: 3px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.user-doc {
-    font-family: monospace;
-    font-weight: 600;
-}
-
-.dot-separator {
-    display: inline-block;
-    width: 4px;
-    height: 4px;
-    background-color: #ccc;
-    border-radius: 50%;
-    margin: 0 8px;
-    vertical-align: middle;
-}
-
-.ficha-badge {
-    background-color: var(--info);
-    padding: 3px 8px;
-    font-size: 11px;
-    font-weight: 500;
-}
-
-.asistencia-times {
-    display: flex;
-    align-items: center;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px dashed #eee;
-    width: 100%;
-}
-
-.time-column {
-    text-align: center;
-    flex: 1;
-}
-
-.time-divider {
-    width: 1px;
-    height: 40px;
-    background-color: #eee;
-    margin: 0 15px;
-}
-
-.time-label {
-    font-size: 12px;
-    color: #888;
-    margin-bottom: 5px;
-}
-
-.time-value {
-    font-size: 18px;
-    font-weight: 700;
-    color: #333;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.status-icon {
-    margin-left: 5px;
-    font-size: 14px;
-}
-
-.ontime-icon {
-    color: var(--success);
-}
-
-.late-icon {
-    color: var(--danger);
-}
-
-.early-icon {
-    color: var(--warning);
-}
-
-.no-registro {
-    font-size: 14px;
-    color: #999;
-    font-style: italic;
-}
-
-/* Estado vacío */
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    background-color: white;
-    border-radius: 15px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-}
-
-.empty-icon {
-    font-size: 60px;
-    color: #ddd;
-    margin-bottom: 20px;
-}
-
-.empty-state h3 {
-    font-size: 24px;
-    color: #555;
-    margin-bottom: 10px;
-}
-
-.empty-state p {
-    color: #888;
-    max-width: 400px;
-    margin: 0 auto;
-}
-
-/* Animaciones */
+/* Animaciones personalizadas */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -563,73 +225,23 @@
     }
 }
 
-/* Responsividad */
-@media (max-width: 992px) {
-    .asistencias-grid {
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    }
+.animate-fadeIn {
+    animation: fadeIn 0.5s ease-out;
 }
 
-@media (max-width: 768px) {
-    .asistencias-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .day-item {
-        min-width: 80px;
-        height: 80px;
-    }
-    
-    .filtros-container form {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .search-container {
-        width: 100%;
-    }
-    
-    .btn-filter {
-        width: 100%;
-        margin-right: 0;
-    }
+/* Estilos para scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+    height: 6px;
 }
 
-@media (max-width: 576px) {
-    .date-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .date-header .badge {
-        margin-top: 10px;
-    }
-    
-    .asistencia-card {
-        padding: 12px;
-    }
-    
-    .user-avatar {
-        margin-right: 10px;
-    }
-    
-    .avatar-circle {
-        width: 40px;
-        height: 40px;
-        font-size: 16px;
-    }
+.scrollbar-thumb-green-500::-webkit-scrollbar-thumb {
+    background-color: #10b981;
+    border-radius: 10px;
+}
+
+.scrollbar-track-gray-100::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 10px;
 }
 </style>
-
-<script>
-// Script para autoseleccionar la fecha en el scroller
-document.addEventListener('DOMContentLoaded', function() {
-    // Encuentra el elemento activo
-    const activeDay = document.querySelector('.day-item.active');
-    if (activeDay) {
-        // Scroller hasta el elemento activo
-        activeDay.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }
-});
-</script>
 @endsection 

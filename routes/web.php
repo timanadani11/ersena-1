@@ -44,6 +44,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     
     // Aprendices
     Route::get('/aprendices', [AdminController::class, 'aprendices'])->name('admin.aprendices');
+    Route::get('/aprendices/buscar', [AdminController::class, 'buscarAprendiz'])->name('admin.aprendices.buscar');
+    Route::get('/aprendices/detalles/{id}', [AdminController::class, 'detallesAprendiz'])->name('admin.aprendices.detalles');
     
     // Programas
     Route::get('/programas', [AdminController::class, 'programas'])->name('admin.programas');
@@ -89,4 +91,11 @@ Route::middleware(['auth', 'role:aprendiz'])->group(function () {
     Route::get('/aprendiz/dashboard', [AprendizController::class, 'dashboard'])->name('aprendiz.dashboard');
     Route::post('/aprendiz/actualizar-foto', [AprendizController::class, 'actualizarFoto'])->name('aprendiz.actualizar-foto');
     Route::post('/aprendiz/filtrar-registros', [AprendizController::class, 'filtrarRegistros'])->name('aprendiz.filtrar-registros');
+});
+
+// Rutas para reportes
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/reportes', [App\Http\Controllers\Admin\ReportController::class, 'index'])->name('reportes');
+    Route::post('/reportes/pdf', [App\Http\Controllers\Admin\ReportController::class, 'generatePdf'])->name('reportes.pdf');
+    Route::get('/api/buscar-aprendices', [App\Http\Controllers\Admin\ReportController::class, 'buscarAprendices'])->name('api.buscar-aprendices');
 });

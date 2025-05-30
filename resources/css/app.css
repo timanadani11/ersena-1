@@ -1,17 +1,30 @@
-@import '../../public/css/common.css';
-@import '../../public/css/admin.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Estilos adicionales globales */
+/* Custom styles can be added here if needed */
 :root {
-    --vite-error-color: #dc2626;
-    --vite-success-color: #059669;
+  --vite-error-color: #dc2626;
+  --vite-success-color: #059669;
 }
 
-/* Asegurar que los estilos se apliquen correctamente */
-body {
-    margin: 0;
-    padding: 0;
+@layer base {
+  body {
     min-height: 100vh;
-    font-family: var(--font-primary);
-    background-color: var(--color-background);
+  }
+}
+
+/* Colores de notificaciones para la aplicación */
+@layer components {
+  .notification-success {
+    @apply bg-green-500 text-white;
+  }
+  
+  .notification-error {
+    @apply bg-red-500 text-white;
+  }
+  
+  .notification-info {
+    @apply bg-blue-500 text-white;
+  }
 }
